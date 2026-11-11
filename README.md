@@ -36,7 +36,7 @@ The landing page includes the registration clock and links to the four scroll-dr
 
 - Set `event.registrationClosesAt` in `src/content.js` or provide `VITE_REGISTRATION_CLOSES_AT` as an ISO 8601 timestamp with an explicit UTC offset. Both countdowns use the same deadline and show a pending state until it is confirmed.
 - Set `event.prizePool` and each game's `prizePool` in `src/content.js` to the announced amounts.
-- `publishedTeams` accepts public, approved team names and logos. Before any teams are published, the guide shows clearly labeled entries from `previewTeams`. Set `previewTeams` to `{}` to launch with an empty lineup. The team strip supports swipe, buttons, and keyboard arrows.
+- `publishedTeams` accepts public, approved team names and logos. Fictional entries from `previewTeams` appear in local development when no teams are published. Set `VITE_SHOW_SAMPLE_TEAMS=true` when building a private preview that needs them. Team rows loop and pause when a team is hovered. With reduced motion enabled, overflow can be browsed by swipe or keyboard arrows without a visible scrollbar.
 - `coChairs` holds the public contact information shown under Get in touch.
 - Set `rulebookUrl` and the other detail fields on each game once approved for this edition.
 

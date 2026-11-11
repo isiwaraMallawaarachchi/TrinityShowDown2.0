@@ -3,7 +3,7 @@
   margin: 0; padding: 0; border: 0; color: var(--ink); background: var(--paper);
   overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable;
 }
-.ep-dialog::backdrop { background: #041b11d9; }
+.ep-dialog::backdrop { background: color-mix(in srgb, var(--scene-base) 85%, transparent); }
 .ep-toolbar {
   position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between;
   align-items: center; gap: 20px; padding: 10px max(5%, calc((100% - 1050px) / 2));

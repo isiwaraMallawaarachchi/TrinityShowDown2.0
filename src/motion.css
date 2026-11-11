@@ -1,7 +1,68 @@
+.ambient-field {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  --ambient-play: paused;
+  --ambient-dot: var(--palette-mid);
+  --ambient-crest: var(--accent);
+  --ambient-strength: .43;
+}
+.ambient-field[data-active="true"] { --ambient-play: running; }
+.ambient-field-home {
+  z-index: 1;
+  --ambient-dot: var(--scene-highlight);
+  --ambient-crest: var(--ivory);
+  --ambient-strength: .32;
+}
+.ambient-field-guide { z-index: -1; }
+.ambient-window { position: absolute; inset: 0; overflow: clip; }
+.ambient-field-guide .ambient-window { position: sticky; inset: 0 auto auto; height: 100svh; }
+.ambient-halftone {
+  position: absolute;
+  inset: 0;
+  opacity: var(--ambient-strength);
+  mask-image: linear-gradient(90deg, black 4%, #0006 24%, #0002 46% 54%, #0006 76%, black 96%);
+}
+.ambient-dot-screen {
+  position: absolute; inset: 0;
+  mask: radial-gradient(circle at center, #000 1.5px, transparent 2.35px) 0 0 / 9px 9px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--ambient-dot) 24%, transparent), transparent 46%, color-mix(in srgb, var(--ambient-dot) 25%, transparent));
+}
+.ambient-current {
+  position: absolute; inset: -25% -20%;
+  --ambient-flow: color-mix(in srgb, var(--ambient-dot) 68%, transparent);
+  --ambient-flash: color-mix(in srgb, var(--ambient-crest) 72%, transparent);
+  transform: translate3d(calc(var(--pointer-x, 0px) * 1.4), calc(var(--pointer-y, 0px) * 1.1), 0);
+  transition: transform .6s cubic-bezier(.2,.7,.25,1);
+}
+.ambient-current::before {
+  content: ''; position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 36% 29% at 21% 32%, transparent 12%, var(--ambient-flow) 32%, var(--ambient-flash) 44%, transparent 73%),
+    radial-gradient(ellipse 29% 39% at 78% 63%, transparent 14%, var(--ambient-flow) 42%, var(--ambient-flash) 52%, transparent 76%);
+  animation: ambient-current-drift 18s ease-in-out -4s infinite alternate var(--ambient-play);
+}
+.ambient-current-return::before {
+  background:
+    radial-gradient(ellipse 40% 14% at 18% 68%, var(--ambient-flow), transparent 76%),
+    radial-gradient(ellipse 35% 17% at 79% 31%, var(--ambient-flow), transparent 79%);
+  animation-direction: alternate-reverse;
+  animation-duration: 23s;
+}
+@keyframes ambient-current-drift {
+  0% { transform: translate3d(-5%, -7%, 0) rotate(-16deg) scale(.92); }
+  50% { transform: translate3d(3%, 1%, 0) rotate(4deg) scale(1.06); }
+  100% { transform: translate3d(-1%, 8%, 0) rotate(15deg) scale(.97); }
+}
+@media (max-width: 650px) {
+  .ambient-halftone { opacity: calc(var(--ambient-strength) * .8); }
+  .ambient-current-return { display: none; }
+}
+
 .pointer-reticle { position: fixed; top: 0; left: 0; z-index: 100; pointer-events: none; opacity: 0; }
 .pointer-reticle[data-visible] { opacity: 1; }
-.pointer-reticle > span { position: absolute; width: 26px; height: 26px; border: 1px solid #f9f1d76b; border-radius: 50%; transform: translate(-50%,-50%); transition: width .25s, height .25s; }
-.pointer-reticle > i { position: absolute; width: 3px; height: 3px; background: #f1edcd; transform: translate(-50%,-50%) rotate(45deg); }
+.pointer-reticle > span { position: absolute; width: 26px; height: 26px; border: 1px solid var(--scene-line); border-radius: 50%; transform: translate(-50%,-50%); transition: width .25s, height .25s; }
+.pointer-reticle > i { position: absolute; width: 3px; height: 3px; background: var(--ivory); transform: translate(-50%,-50%) rotate(45deg); }
 .pointer-reticle[data-target] > span { width: 39px; height: 39px; }
 @media (prefers-reduced-motion: no-preference) {
   .world-depth { transition: transform .62s cubic-bezier(.16,.7,.2,1); }

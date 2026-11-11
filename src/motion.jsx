@@ -42,6 +42,19 @@ export function useWorldMotion(world, enabled) {
   }, [world, enabled]);
 }
 
+export function AmbientField({ scene, active }) {
+  return <div className={`ambient-field ambient-field-${scene}`} data-active={active} aria-hidden="true">
+    <div className="ambient-window">
+      <div className="ambient-halftone">
+        <div className="ambient-dot-screen">
+          <span className="ambient-current" />
+          <span className="ambient-current ambient-current-return" />
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
 export function PointerReticle({ enabled = true }) {
   const pointer = useRef(null);
   useEffect(() => {

@@ -3,7 +3,7 @@ import { coChairs, event, games, previewTeams, publishedTeams } from './content.
 import { countdownAt, deadlineTime, millisecondsPerMinute } from './countdown.js';
 import { registrationId, rosterRules, rosterSummary } from './registration.js';
 import GameArtwork from './GameArtwork.jsx';
-import { clamp } from './scene-timeline.js';
+import { AmbientField } from './motion.jsx';
 import './tournament-guide.css';
 
 const asset = (path) => import.meta.env.BASE_URL + path;
@@ -99,112 +99,96 @@ function SectionHeading({ id, title, description }) {
   </header>;
 }
 
-function PrizePool() {
+function useInView(ref, enabled) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!enabled) return;
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting));
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [ref, enabled]);
+  return enabled && visible;
+}
+
+const victoryConfetti = Array.from({ length: 26 }, (_, index) => {
+  const duration = 5.8 + (index % 7) * .56;
+  return {
+    left: `${5 + (index * 29 % 91)}%`,
+    '--confetti-rest': `${8 + (index * 17 % 72)}%`,
+    '--confetti-width': `${5 + (index * 5 % 6)}px`,
+    '--confetti-angle': `${index * 49 % 360}deg`,
+    '--confetti-drift': `${(index * 23 % 99) - 49}px`,
+    '--confetti-duration': `${duration}s`,
+    '--confetti-delay': `${-duration * ((index * 7 % 26) / 26)}s`,
+  };
+});
+
+function PrizePool({ active, reduced }) {
+  const stage = useRef(null);
+  const visible = useInView(stage, active && !reduced);
   return <section className="guide-section guide-prizes" id="prize-pool" tabIndex={-1} aria-labelledby="prize-pool-title">
-    <SectionHeading id="prize-pool-title" title="Grand prize pool" />
-    <p className="grand-prize">{event.prizePool ?? 'To be announced'}</p>
+    <div className="prize-hero">
+      <div ref={stage} className="victory-stage" data-active={visible} aria-hidden="true">
+        <div className="victory-plinth"><span /><span /><span /></div>
+        <img className="victory-cup" src={asset('art/championship-trophy.webp')} alt="" width="800" height="960" loading="lazy" decoding="async" />
+        <div className="victory-confetti">
+          {victoryConfetti.map((style) => <i key={style.left} style={style} />)}
+        </div>
+      </div>
+      <div className="prize-hero-copy">
+        <SectionHeading id="prize-pool-title" title="Grand prize pool" />
+        <p className="grand-prize">{event.prizePool ?? 'To be announced'}</p>
+      </div>
+    </div>
     <dl className="prize-breakdown" aria-label="Prize pools by game">
       {games.map((game) => <div key={game.id}>
-        <dt><GameArtwork game={game} />{game.name}</dt>
+        <dt>{game.name}</dt>
         <dd>{game.prizePool ?? 'To be announced'}</dd>
       </div>)}
     </dl>
   </section>;
 }
 
-const markerSpacing = 29;
+const milestoneIcons = {
+  'registration-opens': 'M12 5v14m-7-7h14M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z',
+  'registration-closes': 'M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+  'tournament-day': 'M8 4h8v6a4 4 0 0 1-8 0Zm0 2H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 2v5m-4 1h8',
+};
 
-function TournamentTimeline({ reduced, gamesRef }) {
-  const section = useRef(null);
-  const visual = useRef(null);
+function TournamentTimeline({ reduced }) {
+  const steps = useRef(null);
+  const [started, setStarted] = useState(false);
 
   useEffect(() => {
-    if (reduced) return;
-    const timeline = section.current;
-    const dial = visual.current;
-    const gamesSection = gamesRef.current;
-    const steps = [...timeline.querySelectorAll('.timeline-step')];
-    const markers = [...dial.querySelectorAll('.timeline-marker')];
-    let frame = 0;
-    let active = -1;
+    if (reduced || started) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.intersectionRatio < .25) return;
+      setStarted(true);
+      observer.disconnect();
+    }, { threshold: .25 });
+    observer.observe(steps.current);
+    return () => observer.disconnect();
+  }, [reduced, started]);
 
-    function measure() {
-      frame = 0;
-      const height = window.innerHeight;
-      const { top, bottom } = timeline.getBoundingClientRect();
-      if (top >= height || bottom < -height) return;
-
-      const focus = height * .54;
-      const centers = steps.map((step) => {
-        const box = step.getBoundingClientRect();
-        return box.top + box.height / 2;
-      });
-      const position = centers.slice(1).reduce((progress, center, index) => {
-        return progress + clamp((focus - centers[index]) / (center - centers[index]));
-      }, 0);
-      const gamesTop = gamesSection.getBoundingClientRect().top;
-      const dialEntry = clamp((height * .96 - top) / (height * .42));
-      const dialExit = clamp((height * .75 - bottom) / (height * .46));
-      const gamesEntry = clamp((height * .78 - gamesTop) / (height * .47));
-
-      dial.style.setProperty('--dial-turn', `${-position * markerSpacing}deg`);
-      dial.style.setProperty('--dial-opacity', dialEntry * (1 - dialExit));
-      dial.style.setProperty('--dial-x', `${(1 - dialEntry) * -38 - dialExit * 14}%`);
-      const nearest = Math.round(position);
-      if (nearest !== active) {
-        if (active >= 0) delete markers[active].dataset.active;
-        markers[nearest].dataset.active = 'true';
-        active = nearest;
-      }
-      steps.forEach((step, index) => {
-        const enter = clamp((height * .96 - centers[index]) / (height * .27));
-        const exit = clamp((height * .25 - centers[index]) / (height * .21));
-        step.style.setProperty('--step-reveal', enter * (1 - exit));
-      });
-      gamesSection.style.setProperty('--games-entry', gamesEntry);
-    }
-
-    function schedule() {
-      if (!frame) frame = requestAnimationFrame(measure);
-    }
-
-    measure();
-    window.addEventListener('scroll', schedule, { passive: true });
-    window.addEventListener('resize', schedule);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', schedule);
-      window.removeEventListener('resize', schedule);
-    };
-  }, [reduced, gamesRef]);
-
-  return <section ref={section} className="guide-section guide-timeline" id="timeline" tabIndex={-1} aria-labelledby="timeline-title">
-    <div className="timeline-sticky" aria-hidden="true">
-      <div className="timeline-visual" ref={visual}>
-        <div className="timeline-wheel">
-          {event.milestones.map(({ id }, index) => <div key={id} className="timeline-marker"
-            style={{ '--marker-angle': `${index * markerSpacing}deg` }}>
-            <span>{String(index + 1).padStart(2, '0')}</span>
-          </div>)}
+  return <section className="guide-section guide-timeline" id="timeline" tabIndex={-1} aria-labelledby="timeline-title">
+    <SectionHeading id="timeline-title" title="Event timeline" />
+    <ol ref={steps} className="timeline-steps" role="list" data-started={started}>
+      {event.milestones.map((milestone, index) => <li key={milestone.id} className="timeline-step" style={{ '--milestone-index': index }}>
+        <span className="timeline-node" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round">
+            <path d={milestoneIcons[milestone.id]} />
+          </svg>
+        </span>
+        {index < event.milestones.length - 1 && <span className="timeline-connector" aria-hidden="true" />}
+        <div className="timeline-milestone">
+          <h3>{milestone.title}</h3>
+          <p className="timeline-date">{milestone.id === 'registration-closes' && closesAt !== null
+            ? <time dateTime={deadline}>{dateText}</time>
+            : milestone.id === 'tournament-day' ? event.date : 'To be announced'}</p>
+          <p>{milestone.description}</p>
         </div>
-      </div>
-    </div>
-    <div className="timeline-copy">
-      <div className="timeline-intro">
-        <h2 id="timeline-title">Event timeline</h2>
-      </div>
-      <ol className="timeline-steps" role="list">
-        {event.milestones.map((milestone) => <li key={milestone.id} className="timeline-step">
-          <div className="timeline-milestone">
-            <p className="timeline-date">{milestone.id === 'registration-closes' && closesAt !== null
-              ? <time dateTime={deadline}>{dateText}</time>
-              : milestone.id === 'tournament-day' ? event.date : 'To be announced'}</p>
-            <h3>{milestone.title}</h3>
-            <p>{milestone.description}</p>
-          </div>
-        </li>)}
-      </ol>
-    </div>
+      </li>)}
+    </ol>
   </section>;
 }
 
@@ -216,14 +200,10 @@ function About() {
       <article><h3>Our mission</h3><p>Give university players a place to compete, develop their skills, and represent their teams.</p></article>
       <article><h3>Our vision</h3><p>Build a lasting community for competitive mobile gaming in Sri Lanka.</p></article>
     </div>
-    <div className="about-hosts">
-      <p className="eyebrow">Organized by</p>
-      <OrganizerMarks />
-    </div>
   </section>;
 }
 
-function GameDetails({ sectionRef, selected, onSelect, onNavigate }) {
+function GameDetails({ selected, onSelect, onNavigate }) {
   const index = Math.max(0, games.findIndex((game) => game.id === selected));
   function handleKeys(e) {
     const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
@@ -237,14 +217,14 @@ function GameDetails({ sectionRef, selected, onSelect, onNavigate }) {
     onSelect(games[next].id);
     e.currentTarget.querySelectorAll('[role="tab"]')[next]?.focus();
   }
-  return <section ref={sectionRef} className="guide-section guide-games" id="games" tabIndex={-1} aria-labelledby="games-title">
+  return <section className="guide-section guide-games" id="games" tabIndex={-1} aria-labelledby="games-title">
     <SectionHeading id="games-title" title="Games" />
     <div className="game-tabs" role="tablist" aria-label="Choose a game" onKeyDown={handleKeys}>
       {games.map((item, i) => <button key={item.id} type="button" role="tab" id={'game-tab-' + item.id}
         aria-selected={index === i} aria-controls={'game-panel-' + item.id} tabIndex={index === i ? 0 : -1}
         onClick={() => onSelect(item.id)}>
         <GameArtwork game={item} />
-        <span>{item.shortName}</span>
+        <span className="game-tab-label">{item.shortName}</span>
       </button>)}
     </div>
     {games.map((game, i) => <GamePanel key={game.id} game={game} active={i === index} onNavigate={onNavigate} />)}
@@ -276,66 +256,71 @@ function GamePanel({ game, active, onNavigate }) {
 
 function TeamTrack({ game, teams, preview, reduced }) {
   const track = useRef(null);
-  const [edges, setEdges] = useState({ start: true, end: false });
+  const firstList = useRef(null);
+  const [size, setSize] = useState({ list: 0, viewport: 0 });
+  const overflowing = size.list > size.viewport + 2;
+  const looping = !reduced && teams.length > 1 && size.list > 0;
+  const copies = looping ? Math.ceil(size.viewport / size.list) : 0;
+  const visible = useInView(track, looping);
 
   useEffect(() => {
-    const list = track.current;
+    const viewport = track.current;
+    const list = firstList.current;
     function update() {
-      const start = list.scrollLeft < 2;
-      const end = list.scrollLeft >= list.scrollWidth - list.clientWidth - 2;
-      setEdges((old) => old.start === start && old.end === end ? old : { start, end });
+      const width = list.getBoundingClientRect().width;
+      const available = viewport.clientWidth;
+      setSize((previous) => previous.list === width && previous.viewport === available
+        ? previous : { list: width, viewport: available });
     }
     const observer = new ResizeObserver(update);
+    observer.observe(viewport);
     observer.observe(list);
-    list.addEventListener('scroll', update, { passive: true });
     update();
-    return () => { observer.disconnect(); list.removeEventListener('scroll', update); };
-  }, [teams.length]);
+    return () => observer.disconnect();
+  }, []);
 
   function slide(direction) {
-    const list = track.current;
-    const first = list.firstElementChild;
-    const step = first.nextElementSibling ? first.nextElementSibling.offsetLeft - first.offsetLeft : first.offsetWidth;
-    list.scrollBy({ left: direction * step, behavior: reduced ? 'instant' : 'smooth' });
+    const [first, second] = firstList.current.children;
+    const step = second ? second.offsetLeft - first.offsetLeft : first.offsetWidth;
+    track.current.scrollBy({ left: direction * step, behavior: 'instant' });
   }
 
-  const trackId = 'teams-' + game.id;
-  return <div className="lineup" role="region" aria-label={game.name + ' team lineup'}>
-      <div className="lineup-bar"><p className="eyebrow">{preview ? 'Sample lineup' : `${teams.length} ${teams.length === 1 ? 'team' : 'teams'} approved`}</p>
-        {!(edges.start && edges.end) && <div className="lineup-arrows">
-          <button type="button" onClick={() => slide(-1)} disabled={edges.start} aria-controls={trackId} aria-label="Previous team cards">←</button>
-          <button type="button" onClick={() => slide(1)} disabled={edges.end} aria-controls={trackId} aria-label="Next team cards">→</button>
-        </div>}
-      </div>
-      <ul ref={track} id={trackId} className="team-track" tabIndex={0} aria-label={game.name + (preview ? ' sample teams' : ' registered teams')} onKeyDown={(e) => {
-        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  function renderList(copy) {
+    return <ul key={copy} ref={copy === 0 ? firstList : undefined} className="team-tiles" role="list"
+      aria-hidden={copy ? true : undefined} aria-label={copy ? undefined : game.name + (preview ? ' sample teams' : ' registered teams')}>
+      {teams.map((team) => <li key={team.id}>
+        <div className="team-emblem">
+          {preview ? <span className="team-sample-emblem" aria-hidden="true">{team.name.split(' ').map((word) => word[0]).join('')}</span>
+            : team.logoUrl ? <img src={team.logoUrl} alt="" loading="lazy" /> : <Crest />}
+        </div>
+        <h4>{team.name}</h4>
+      </li>)}
+    </ul>;
+  }
+
+  return <div ref={track} className="team-track" data-loop={looping} data-active={visible}
+      role="region" aria-label={`${game.name} team logos`} tabIndex={!looping && overflowing ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (looping || !overflowing || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
         e.preventDefault();
         slide(e.key === 'ArrowLeft' ? -1 : 1);
       }}>
-        {teams.map((team) => <li key={team.id}>
-          <div className="team-emblem">
-            {preview ? <span className="team-sample-emblem" aria-hidden="true">{team.name.split(' ').map((word) => word[0]).join('')}</span>
-              : team.logoUrl ? <img src={team.logoUrl} alt="" loading="lazy" /> : <Crest />}
-          </div>
-          <h4>{team.name}</h4>
-        </li>)}
-      </ul>
+      <div className="team-belt" style={{ '--team-cycle': `${-size.list}px`, '--team-duration': `${size.list / 36}s` }}>
+        {Array.from({ length: 1 + copies }, (_, index) => renderList(index))}
+      </div>
     </div>;
 }
 
 function TeamLineup({ reduced, onNavigate }) {
-  const showPreview = publishedTeams.length === 0 && Object.keys(previewTeams).length > 0;
+  const previewEnabled = import.meta.env.DEV || import.meta.env.VITE_SHOW_SAMPLE_TEAMS === 'true';
+  const showPreview = previewEnabled && publishedTeams.length === 0;
   return <section className="guide-section guide-teams" id="teams" tabIndex={-1} aria-labelledby="teams-title">
-    <SectionHeading id="teams-title" title="Competing teams"
-      description={showPreview ? 'Sample teams for preview.' : undefined} />
+    <SectionHeading id="teams-title" title="Competing teams" />
     <div className="lineup-groups">{games.map((game) => {
       const teams = showPreview ? (previewTeams[game.id] ?? []).map((name) => ({ id: name, name }))
         : publishedTeams.filter((team) => team.gameId === game.id);
       return <section key={game.id} className="lineup-group" aria-labelledby={'lineup-' + game.id}>
-        <header className="lineup-game">
-          <GameArtwork game={game} />
-          <h3 id={'lineup-' + game.id}>{game.name}</h3>
-        </header>
+        <h3 className="lineup-game" id={'lineup-' + game.id}>{game.name}</h3>
         {teams.length ? <TeamTrack game={game} teams={teams} preview={showPreview} reduced={reduced} /> :
           <div className="lineup-empty">
             <p><Crest /> No approved teams yet.</p>
@@ -391,19 +376,8 @@ function DownloadIcon() {
 }
 
 function Rulebooks() {
-  const banner = useRef(null);
-  const [inView, setInView] = useState(false);
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => setInView(entry.intersectionRatio >= .35), { threshold: .35 });
-    observer.observe(banner.current);
-    return () => observer.disconnect();
-  }, []);
-
   return <section className="guide-section guide-rulebooks" id="rulebooks" tabIndex={-1} aria-labelledby="rulebooks-title">
-    <div ref={banner} className="rulebook-banner" data-in-view={inView}>
-      <span className="rulebook-download-mark" aria-hidden="true"><DownloadIcon /></span>
-      <SectionHeading id="rulebooks-title" title="Game rulebooks" description="Download the official PDF for your game when it’s available." />
-    </div>
+    <SectionHeading id="rulebooks-title" title="Game rulebooks" />
     <ul className="rulebooks" role="list">
       {games.map((game) => <li key={game.id}>
         <span>{game.name}</span>
@@ -480,8 +454,8 @@ function Footer({ onNavigate }) {
   return <footer className="site-footer" id="footer" tabIndex={-1}>
     <div className="footer-inner">
       <div className="footer-identity">
-        <OrganizerMarks compact />
         <img src={asset('art/trinity.svg')} alt="Trinity Showdown" width="174" height="77" />
+        <OrganizerMarks compact />
       </div>
       {columns.map(([heading, links]) => <nav key={heading} aria-label={heading}><h2 className="eyebrow">{heading}</h2>
         {links.map(([id, name]) => <a href={'#' + id} key={id} onClick={(e) => { e.preventDefault(); onNavigate(id); }}>{name}</a>)}
@@ -500,12 +474,12 @@ function Footer({ onNavigate }) {
   </footer>;
 }
 
-export default function TournamentGuide({ guideRef, selectedGame, onGame, reduced, onNavigate }) {
-  const gamesRef = useRef(null);
+export default function TournamentGuide({ guideRef, active, selectedGame, onGame, reduced, onNavigate }) {
   return <div className="tournament-guide" ref={guideRef}>
-    <PrizePool />
-    <TournamentTimeline reduced={reduced} gamesRef={gamesRef} />
-    <GameDetails sectionRef={gamesRef} selected={selectedGame} onSelect={onGame} onNavigate={onNavigate} />
+    <AmbientField scene="guide" active={active} />
+    <PrizePool active={active} reduced={reduced} />
+    <TournamentTimeline reduced={reduced} />
+    <GameDetails selected={selectedGame} onSelect={onGame} onNavigate={onNavigate} />
     <TeamLineup reduced={reduced} onNavigate={onNavigate} />
     <Rules />
     <Rulebooks />

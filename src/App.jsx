@@ -5,7 +5,7 @@ import { event, games } from './content.js';
 import RegistrationPortal from './EventPanel.jsx';
 import TournamentGuide, { RegistrationClock } from './TournamentGuide.jsx';
 import { registrationId } from './registration.js';
-import { PointerReticle, useWorldMotion, useReducedPreference } from './motion.jsx';
+import { AmbientField, PointerReticle, useWorldMotion, useReducedPreference } from './motion.jsx';
 import SceneVideo, { useMediaVariant } from './SceneVideo.jsx';
 import { useSceneJourney } from './useSceneJourney.js';
 import './styles.css';
@@ -45,6 +45,7 @@ function WorldChapter({ chapter, active, warm, visible, variant, progress, reduc
       </div>
     </div>
     <div className="world-shade" aria-hidden="true" />
+    {home && <AmbientField scene="home" active={active && visible} />}
     {home && <div className="hero-glare" aria-hidden="true">
       {heroSparks.map(([x, y], index) => <i key={x} style={{ left: x + '%', top: y + '%', '--spark-delay': -index * 1.7 + 's', '--spark-duration': 9 + index % 3 * 3 + 's' }} />)}
     </div>}
@@ -126,6 +127,7 @@ export default function App() {
   const { active, visible, inGuide, sceneRefs, anchors, progress, goTo } =
     useSceneJourney(chapters, world, isModalOpen, reduced, guide, sectionIds, header);
   useWorldMotion(world, !isModalOpen && !reduced && !inGuide);
+  useWorldMotion(guide, !isModalOpen && !reduced && inGuide);
 
   const navigate = useCallback((id) => {
     const index = chapters.findIndex((chapter) => chapter.id === id);
@@ -170,6 +172,7 @@ export default function App() {
   function toggleTheme() {
     const next = theme === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
+    document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
     try { localStorage.setItem('trinity-theme', next); } catch {}
     setTheme(next);
   }
@@ -209,7 +212,7 @@ export default function App() {
         {chapters.map((chapter, index) => <div key={chapter.id} className={'chapter-anchor' + (index ? ' game-anchor' : '')}
           id={chapter.id} ref={(node) => { anchors.current[index] = node; }} />)}
       </div>
-      <TournamentGuide guideRef={guide} selectedGame={selectedGame} onGame={setSelectedGame}
+      <TournamentGuide guideRef={guide} active={inGuide && !isModalOpen} selectedGame={selectedGame} onGame={setSelectedGame}
         reduced={reduced} onNavigate={navigate} />
     </main>
     {!inGuide && <>

@@ -58,10 +58,10 @@ export const publishedTeams = [];
 
 // Fictional entries for checking the lineup layout before teams are published.
 export const previewTeams = {
-  'cod-mobile': ['Iron Vipers', 'Night Breach', 'Zero Signal'],
-  'pubg-mobile': ['Drop Zone', 'Last Circle', 'Skybound'],
-  mlbb: ['Nexus Tide', 'Moonward', 'Storm Crest'],
-  'clash-of-clans': ['Ember Keep', 'Rune Wardens', 'Stone Reign'],
+  'cod-mobile': ['Iron Vipers', 'Night Breach', 'Zero Signal', 'Atlas Unit', 'Ghost Sector', 'Phantom Five', 'Black Circuit', 'Steel Division'],
+  'pubg-mobile': ['Drop Zone', 'Last Circle', 'Skybound', 'Ridge Runners', 'Cloud Brigade', 'Flare Squad', 'Silent Drop', 'North Grid'],
+  mlbb: ['Nexus Tide', 'Moonward', 'Storm Crest', 'Twilight Core', 'Apex Lane', 'Lunar Guard', 'Dawn Rift', 'Arc Hunters'],
+  'clash-of-clans': ['Ember Keep', 'Rune Wardens', 'Stone Reign', 'Bastion Forge', 'Gold Legion', 'Cinder Gate', 'High Citadel', 'Thorn Crown'],
 };
 
 export const coChairs = [
