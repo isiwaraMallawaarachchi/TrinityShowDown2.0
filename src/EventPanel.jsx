@@ -5,6 +5,22 @@ import './event-panel.css';
 const imageTypes = ['image/jpeg', 'image/png', 'image/webp'];
 const maxBytes = 5 * 1024 * 1024;
 const steps = ['Team details', 'Team leader', 'Starting players', 'Substitutes', 'Review'];
+const reviewStep = steps.length - 1;
+
+function checkEntry(form, slots) {
+  const issues = [];
+  for (const panel of form.querySelectorAll('[data-step]')) {
+    const invalid = [...panel.querySelectorAll('input')].filter((field) => field.willValidate && !field.validity.valid);
+    if (invalid.length) issues.push({ step: Number(panel.dataset.step), field: invalid[0], count: invalid.length });
+  }
+  if (issues.length) return { issues };
+
+  const entry = reviewRegistration(new FormData(form), slots);
+  if (!entry.error) return { entry };
+
+  const field = form.elements.namedItem(entry.fieldName);
+  return { error: entry.error, issues: [{ step: Number(field.closest('[data-step]').dataset.step), field }] };
+}
 
 function TextField({ label, name, type = 'text', maxLength = 120, autoComplete = 'off' }) {
   return <label className="entry-field">
@@ -55,63 +71,69 @@ function RegistrationForm({ game }) {
   const [step, setStep] = useState(0);
   const [substitutes, setSubstitutes] = useState({});
   const [review, setReview] = useState(null);
-  const [error, setError] = useState('');
+  const form = useRef(null);
   const stepHeading = useRef(null);
-  const initialFocus = useRef(true);
+  const pendingFocus = useRef(null);
   const idLabel = rules.playerIdLabel ?? 'In-game ID';
 
   useEffect(() => {
-    if (initialFocus.current) {
-      initialFocus.current = false;
-      return;
+    const target = pendingFocus.current;
+    pendingFocus.current = null;
+    if (target === 'heading') stepHeading.current?.focus();
+    else if (target) {
+      target.focus();
+      target.reportValidity();
     }
-    stepHeading.current?.focus();
   }, [step]);
+
+  function goToStep(index, focusTarget = null) {
+    if (index === reviewStep) setReview(checkEntry(form.current, slots));
+    pendingFocus.current = focusTarget;
+    setStep(index);
+  }
+
+  function handleTabKeys(e) {
+    let index;
+    if (e.key === 'ArrowLeft') index = (step + steps.length - 1) % steps.length;
+    else if (e.key === 'ArrowRight') index = (step + 1) % steps.length;
+    else if (e.key === 'Home') index = 0;
+    else if (e.key === 'End') index = reviewStep;
+    else return;
+    e.preventDefault();
+    goToStep(index);
+    e.currentTarget.querySelectorAll('[role="tab"]')[index].focus();
+  }
 
   function next(e) {
     e.preventDefault();
-    setError('');
-    if (step === steps.length - 1) return;
-    const fields = e.currentTarget.querySelectorAll('[data-step="' + step + '"] input');
-    for (const field of fields) {
-      if (!field.reportValidity()) return;
-    }
-    if (step < 3) {
-      setStep(step + 1);
-      return;
-    }
-    const entry = reviewRegistration(new FormData(e.currentTarget), slots);
-    if (entry.error) {
-      setError(entry.error);
-      return;
-    }
-    setReview(entry);
-    setStep(4);
+    if (step < reviewStep) goToStep(step + 1, 'heading');
   }
 
-  return <form className="entry-form" noValidate onSubmit={next} autoComplete="off">
-    <ol className="entry-steps" aria-label="Registration progress">
-      {steps.map((label, index) => <li key={label} aria-current={step === index ? 'step' : undefined}
-        className={step > index ? 'is-complete' : undefined}><span>{String(index + 1).padStart(2, '0')}</span>{label}</li>)}
-    </ol>
+  const entry = review?.entry;
+  return <form ref={form} className="entry-form" noValidate onSubmit={next} autoComplete="off">
+    <div className="entry-steps" role="tablist" aria-label="Registration steps" onKeyDown={handleTabKeys}>
+      {steps.map((label, index) => <button key={label} type="button" role="tab" id={'entry-tab-' + index}
+        aria-selected={step === index} aria-controls={'entry-panel-' + index} tabIndex={step === index ? 0 : -1}
+        onClick={() => goToStep(index)}><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>{label}</button>)}
+    </div>
     <h3 className="entry-step-title" ref={stepHeading} tabIndex={-1}>{steps[step]}</h3>
-    <div data-step="0" hidden={step !== 0} className="entry-step">
+    <div data-step="0" id="entry-panel-0" role="tabpanel" aria-labelledby="entry-tab-0" hidden={step !== 0} className="entry-step">
       <div className="entry-grid">
         <TextField label="Team name" name="teamName" maxLength={100} />
         <TextField label="University name" name="university" />
         <ImageField label="Team logo" name="teamLogo" />
         <ImageField label="Bank transfer proof" name="paymentProof" />
       </div>
-      <p className="entry-help">Use sample images in this preview. The entry fee and bank details will be published before registration opens.</p>
+      <p className="entry-help">The entry fee and bank details will be published before registration opens.</p>
     </div>
-    <div data-step="1" hidden={step !== 1} className="entry-step">
+    <div data-step="1" id="entry-panel-1" role="tabpanel" aria-labelledby="entry-tab-1" hidden={step !== 1} className="entry-step">
       <PlayerFields slot={slots[0]} idLabel={idLabel} />
     </div>
-    <div data-step="2" hidden={step !== 2} className="entry-step entry-stack">
+    <div data-step="2" id="entry-panel-2" role="tabpanel" aria-labelledby="entry-tab-2" hidden={step !== 2} className="entry-step entry-stack">
       {slots.filter((slot) => !slot.leader && !slot.optional).map((slot) =>
         <PlayerFields key={slot.id} slot={slot} idLabel={idLabel} />)}
     </div>
-    <div data-step="3" hidden={step !== 3} className="entry-step entry-stack">
+    <div data-step="3" id="entry-panel-3" role="tabpanel" aria-labelledby="entry-tab-3" hidden={step !== 3} className="entry-step entry-stack">
       <p className="entry-help">Substitutes are optional. Add each substitute you want to include.</p>
       {slots.filter((slot) => slot.optional).map((slot) => <div key={slot.id} className="entry-substitute">
         <label className="entry-check"><input type="checkbox" checked={Boolean(substitutes[slot.id])}
@@ -121,17 +143,28 @@ function RegistrationForm({ game }) {
         </div>
       </div>)}
     </div>
-    {step === 4 && review && <div className="entry-review">
-      <dl><div><dt>Team</dt><dd>{review.team}</dd></div><div><dt>University</dt><dd>{review.university}</dd></div>
-        <div><dt>Images attached</dt><dd>{review.files}</dd></div></dl>
-      <ul>{review.players.map((player) => <li key={player.id}><span>{player.role}</span><strong>{player.name}</strong><span>{player.gameName}</span></li>)}</ul>
-      <p className="entry-help">This preview ends here. Live registration will open once the event details and secure submission service are ready.</p>
-    </div>}
-    {error && <p className="entry-error" role="alert">{error}</p>}
+    <div id="entry-panel-4" role="tabpanel" aria-labelledby="entry-tab-4" hidden={step !== reviewStep} tabIndex={0} className="entry-step">
+      {review?.issues && <div className="entry-issues">
+        <p>{review.error ?? 'Complete the required fields in these sections before submitting.'}</p>
+        <ul>{review.issues.map(({ step: issueStep, field, count }) => <li key={issueStep}>
+          <button type="button" onClick={() => goToStep(issueStep, field)}>
+            <strong>{steps[issueStep]}</strong>
+            <span>{count ? `${count} ${count === 1 ? 'field' : 'fields'} to check` : 'Check university ID'}</span>
+            <span aria-hidden="true">→</span>
+          </button>
+        </li>)}</ul>
+      </div>}
+      {entry && <div className="entry-review">
+        <p className="entry-review-status">All required details are complete.</p>
+        <dl><div><dt>Team</dt><dd>{entry.team}</dd></div><div><dt>University</dt><dd>{entry.university}</dd></div>
+          <div><dt>Images attached</dt><dd>{entry.files}</dd></div></dl>
+        <ul>{entry.players.map((player) => <li key={player.id}><span>{player.role}</span><strong>{player.name}</strong><span>{player.gameName}</span></li>)}</ul>
+      </div>}
+    </div>
     <div className="entry-actions">
-      {step > 0 && <button type="button" className="entry-back" onClick={() => { setError(''); setStep(step - 1); }}>Back</button>}
-      {step < 4 && <button className="portal-button" type="submit">{step === 3 ? 'Review entry' : 'Continue'}</button>}
-      {step === 4 && <button className="portal-button" type="submit" disabled>Submit registration</button>}
+      {step > 0 && <button type="button" className="entry-back" onClick={() => goToStep(step - 1, 'heading')}>Back</button>}
+      {step < reviewStep && <button className="portal-button" type="submit">{step === reviewStep - 1 ? 'Review entry' : 'Continue'}</button>}
+      {step === reviewStep && <button className="portal-button" type="submit" disabled aria-describedby="registration-status">Submit registration</button>}
     </div>
   </form>;
 }
@@ -157,7 +190,7 @@ export default function RegistrationPortal({ game, onClose, themeControl }) {
         <p className="eyebrow">Team registration</p>
         <h2 id="registration-panel-title">{game.name}</h2>
         <p className="entry-roster-count">{rosterSummary(game.id)}{rosterRules[game.id].provisional && ' · Provisional roster'}</p>
-        <p className="entry-preview"><strong>Form preview.</strong> Use sample details and files. Your entry is available for review in this tab only.</p>
+        <p className="entry-status" id="registration-status">Registration submissions aren’t open yet.</p>
         <RegistrationForm key={game.id} game={game} />
       </div>
     </>}

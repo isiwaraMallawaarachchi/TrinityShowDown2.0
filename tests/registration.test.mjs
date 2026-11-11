@@ -41,5 +41,7 @@ test('review rejects a starter and substitute with the same university ID', () =
   form.set('sub-1.name', 'Sample Substitute');
   form.set('sub-1.studentId', ' 000-LEADER ');
   form.set('sub-1.gameName', 'Example-sub');
-  assert.match(reviewRegistration(form, slots).error, /Team leader and Substitute 1 have the same university ID/);
+  const result = reviewRegistration(form, slots);
+  assert.match(result.error, /Team leader and Substitute 1 have the same university ID/);
+  assert.equal(result.fieldName, 'sub-1.studentId');
 });

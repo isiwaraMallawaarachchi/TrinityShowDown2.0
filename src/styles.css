@@ -27,6 +27,7 @@
   --hero-grade: saturate(1.23) brightness(1.05);
   --hero-aura: #39ff9a28;
   --footer: #0a4029;
+  --footer-edge: #287951;
   --ivory: #f1fff6;
   --scene-highlight: #9effbf;
   font-family: var(--body);
@@ -60,7 +61,8 @@
   --hero-shade: linear-gradient(180deg, #020e0ac7, #03170c12 36% 65%, #020b07ee);
   --hero-grade: saturate(1.35) brightness(.87);
   --hero-aura: #0af48239;
-  --footer: #06170f;
+  --footer: #030c08;
+  --footer-edge: #315641;
 }
 * { box-sizing: border-box; }
 html { scrollbar-width: none; overflow-anchor: none; }
@@ -88,6 +90,18 @@ form, figure, dl, dd { margin: 0; }
 .world-camera, .scene-film { position: relative; width: 100%; height: 100%; }
 .world-camera { transform: scale(var(--scene-scale, 1)); }
 .world-picture, .film-poster, .film-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.game-artwork { display: block; position: relative; container-type: size; overflow: hidden; aspect-ratio: var(--art-ratio); pointer-events: none; }
+.game-artwork img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: var(--art-x) var(--art-y); }
+.game-artwork.is-sideways img {
+  inset: 50% auto auto 50%;
+  /* Swap the display dimensions before turning the original JPEG upright. */
+  width: 100cqh;
+  height: 100cqw;
+  max-width: none;
+  object-position: calc(100% - var(--art-y)) var(--art-x);
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+.game-artwork.film-poster { position: absolute; }
 .world-home { background: #040909; }
 .hero-picture { position: absolute; inset: 0; display: block; }
 .world-home .world-picture { object-position: center 34%; filter: var(--hero-grade); }
@@ -292,9 +306,9 @@ form, figure, dl, dd { margin: 0; }
 .menu-art { display: grid; justify-items: center; gap: 25px; }
 .menu-art img { width: min(80%, 390px); filter: drop-shadow(0 7px 14px #06291c70); }
 .menu-chapters { display: grid; padding: 26px 0; }
-.menu-chapters a { display: grid; grid-template-columns: minmax(0, 1fr) 12px; align-items: center; gap: 12px; min-height: 55px; border-bottom: 1px solid var(--rule); transition: color .2s, padding .26s; }
+.menu-chapters a { display: grid; grid-template-columns: minmax(0, 1fr) 12px; align-items: center; gap: 12px; min-height: 48px; border-bottom: 1px solid var(--rule); transition: color .2s, padding .26s; }
 .menu-chapters a:hover { color: var(--accent); padding-left: 7px; }
-.menu-chapters a span { font: 400 clamp(24px,4vw,55px)/1.15 var(--display); }
+.menu-chapters a span { font: 400 clamp(24px,3vw,42px)/1.15 var(--display); }
 .menu-chapters i { justify-self: center; opacity: .6; }
 .ornament { display: flex; align-items: center; gap: 10px; color: var(--accent); }
 .ornament i { width: 40px; height: 1px; background: currentColor; }

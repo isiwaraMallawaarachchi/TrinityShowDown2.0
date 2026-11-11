@@ -30,9 +30,13 @@ export function reviewRegistration(data, slots) {
   for (const slot of slots) {
     const name = data.get(slot.id + '.name');
     if (slot.optional && name === null) continue;
-    const studentId = data.get(slot.id + '.studentId').trim().toLowerCase();
+    const fieldName = slot.id + '.studentId';
+    const studentId = data.get(fieldName).trim().toLowerCase();
     if (studentIds.has(studentId)) {
-      return { error: studentIds.get(studentId) + ' and ' + slot.label + ' have the same university ID. Check the roster before reviewing.' };
+      return {
+        error: studentIds.get(studentId) + ' and ' + slot.label + ' have the same university ID.',
+        fieldName,
+      };
     }
     studentIds.set(studentId, slot.label);
     players.push({ id: slot.id, role: slot.label, name: name.trim(), gameName: data.get(slot.id + '.gameName').trim() });

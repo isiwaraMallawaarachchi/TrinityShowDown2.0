@@ -25,16 +25,18 @@ The landing uses the supplied Emerald Shadow Squad artwork, with a full-width We
 - `src/useSceneJourney.js`: native scrolling, finite easing, chapter links and responsive geometry.
 - `src/styles.css`, `src/motion.css`, `src/event-panel.css`: composition, pointer depth and typography.
 - `src/scene-media.json`: generated media manifest.
-- `public/media/scenes`: optimized MP4 clips and matching WebP posters.
+- `public/media/scenes`: optimized MP4 clips.
+- `public/art/game-art`: supplied game artwork shared by the guide, registration, and video fallback.
 
-A game spans 185% of the small viewport height. Its first frame holds during entry, the clip scrubs through the central span, and its last frame holds during exit. Only currently visible videos decode; the current and adjacent chapters retain downloaded clips. A complete clip becomes a local blob before seeking, avoiding network range requests during scrubbing. Matching posters remain visible while downloading or if media fails. Touch devices do not get pointer parallax. No custom wheel interception or scroll snapping is used.
+A game spans 185% of the small viewport height. Its first frame holds during entry, the clip scrubs through the central span, and its last frame holds during exit. Only currently visible videos decode; the current and adjacent chapters retain downloaded clips. A complete clip becomes a local blob before seeking, avoiding network range requests during scrubbing. The supplied game artwork is visible before decoding, on media failure, and with reduced motion. Touch devices do not get pointer parallax. No custom wheel interception or scroll snapping is used.
 
 ## Public sections
 
-The landing page includes the registration clock and links to the four scroll-driven game films. The editorial guide then follows the previous edition's section order: About and timeline, game details, competing teams, rules and rulebooks, registration, contact and committee, and footer.
+The landing page includes the registration clock and links to the four scroll-driven game films. The guide starts with the grand prize pool and event timeline, followed by game details, competing teams, rules and eligibility, rulebooks, registration, About, contact, and the footer.
 
 - Set `event.registrationClosesAt` in `src/content.js` or provide `VITE_REGISTRATION_CLOSES_AT` as an ISO 8601 timestamp with an explicit UTC offset. Both countdowns use the same deadline and show a pending state until it is confirmed.
-- `publishedTeams` accepts public, approved team names and logos. Empty game groups are labelled as pending. The team strip supports swipe, buttons, and keyboard arrows.
+- Set `event.prizePool` and each game's `prizePool` in `src/content.js` to the announced amounts.
+- `publishedTeams` accepts public, approved team names and logos. Before any teams are published, the guide shows clearly labeled entries from `previewTeams`. Set `previewTeams` to `{}` to launch with an empty lineup. The team strip supports swipe, buttons, and keyboard arrows.
 - `coChairs` holds the public contact information shown under Get in touch.
 - Set `rulebookUrl` and the other detail fields on each game once approved for this edition.
 

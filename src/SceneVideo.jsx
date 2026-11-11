@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import manifest from './scene-media.json';
 import { createMediaScrubber } from './media-scrubber.js';
+import GameArtwork from './GameArtwork.jsx';
 
 const clips = new Map();
 const asset = (file) => `${import.meta.env.BASE_URL}${file}`;
@@ -58,7 +59,7 @@ export default function SceneVideo({ game, warm, visible, variant, progress, red
     if (!warm || reduced) return;
     let alive = true;
     const lease = acquireClip(source);
-    lease.promise.then((url) => { if (alive) setResource({ source, url }); }).catch(() => { /* The matching poster remains visible on network failure. */ });
+    lease.promise.then((url) => { if (alive) setResource({ source, url }); }).catch(() => { /* Game artwork remains visible on network failure. */ });
     return () => { alive = false; lease.release(); };
   }, [source, warm, reduced]);
 
@@ -73,7 +74,7 @@ export default function SceneVideo({ game, warm, visible, variant, progress, red
   }, [blob, visible, reduced, media, progress]);
 
   return <div className="scene-film" data-media={game.art} data-variant={variant} data-ready={Boolean(blob && readySource === blob)}>
-    {(warm || visible) && <img className="film-poster" src={asset(files.poster)} alt="" decoding="async" />}
+    {(warm || visible) && <GameArtwork game={game} className="film-poster" loading="eager" />}
     {blob && visible && !reduced && <video ref={video} className={`film-video${readySource === blob ? ' is-decoded' : ''}`} src={blob} muted playsInline preload="auto" disablePictureInPicture controlsList="nodownload noremoteplayback" aria-hidden="true" tabIndex={-1} />}
   </div>;
 }

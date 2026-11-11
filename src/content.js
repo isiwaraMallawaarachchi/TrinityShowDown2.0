@@ -47,14 +47,22 @@ export const event = {
   registration: 'Opening date to be announced',
   registrationClosesAt: '2026-12-06T23:59:00+05:30',
   milestones: [
-    { title: 'Registration opens', description: 'Choose a game and prepare your team entry.' },
-    { title: 'Registration closes', description: 'Submit your final roster and payment proof before the deadline.' },
-    { title: 'Tournament day', description: 'The schedule and venue will be announced here.' },
+    { id: 'registration-opens', title: 'Registration opens', description: 'Choose a game and prepare your team entry.' },
+    { id: 'registration-closes', title: 'Registration closes', description: 'Submit your final roster and payment proof before the deadline.' },
+    { id: 'tournament-day', title: 'Tournament day', description: 'The schedule and venue will be announced here.' },
   ],
 };
 
 // Public, approved records only: { id, name, gameId, logoUrl }.
 export const publishedTeams = [];
+
+// Fictional entries for checking the lineup layout before teams are published.
+export const previewTeams = {
+  'cod-mobile': ['Iron Vipers', 'Night Breach', 'Zero Signal'],
+  'pubg-mobile': ['Drop Zone', 'Last Circle', 'Skybound'],
+  mlbb: ['Nexus Tide', 'Moonward', 'Storm Crest'],
+  'clash-of-clans': ['Ember Keep', 'Rune Wardens', 'Stone Reign'],
+};
 
 export const coChairs = [
   { name: 'Lahiru Dodangoda', phone: '0767535881', email: 'lahirudodangoda1@gmail.com' },

@@ -15,14 +15,15 @@ const art = import.meta.env.BASE_URL + 'art/';
 const frostedLogo = art + 'trinity-frosted-clear.webp';
 const chapters = [{ id: 'home', name: 'Home', art: 'home' }, ...games];
 const links = [
-  ['home', 'Home'], ['about', 'About'], ['games', 'Games'],
-  ['teams', 'Teams'], ['rules', 'Rules'], ['register', 'Registration'], ['contact', 'Contact'],
+  ['home', 'Home'], ['prize-pool', 'Prize pool'], ['timeline', 'Timeline'], ['games', 'Games'],
+  ['teams', 'Teams'], ['rules', 'Rules'], ['rulebooks', 'Rulebooks'], ['register', 'Registration'],
+  ['about', 'About'], ['contact', 'Contact'],
 ];
 const portalGames = new Map(games.map((game) => [registrationId(game.id), game]));
 const sectionIds = [...links.slice(1).map(([id]) => id), 'footer', ...portalGames.keys()];
 const aliases = {
   'event-hub': 'register', 'registration': 'register', 'registered-teams': 'teams',
-  'your-next-chapter': 'about', 'event': 'about', 'timeline': 'about', 'organizers': 'contact',
+  'your-next-chapter': 'prize-pool', 'event': 'about', 'organizers': 'contact',
 };
 const heroSparks = [[12, 27], [23, 49], [17, 74], [30, 81], [73, 33], [84, 45], [76, 68], [91, 75]];
 
@@ -173,11 +174,11 @@ export default function App() {
     setTheme(next);
   }
 
-  const next = chapters[active + 1]?.id ?? 'about';
+  const next = chapters[active + 1]?.id ?? 'prize-pool';
   const headerExpanded = active > 0 || inGuide;
   const themeControl = <ThemeToggle dark={theme === 'dark'} onToggle={toggleTheme} />;
   return <>
-    <a className="skip-link" href={inGuide ? '#about' : '#chapter-content'}>Skip to content</a>
+    <a className="skip-link" href={inGuide ? '#prize-pool' : '#chapter-content'}>Skip to content</a>
     <header ref={header} className={'site-header' + (inGuide ? ' is-editorial' : '')}>
       <div className="nav-wing nav-wing-left">
         <div className="nav-actions">
@@ -219,7 +220,7 @@ export default function App() {
         </a>)}
       </nav>
       <a className="scroll-prompt" href={'#' + next} onClick={(e) => route(e, next)}>
-        <span>{active === 0 ? 'Scroll to explore' : active === chapters.length - 1 ? 'About the tournament' : 'Next chapter'}</span>
+        <span>{active === 0 ? 'Scroll to explore' : active === chapters.length - 1 ? 'View prize pool' : 'Next chapter'}</span>
         <i aria-hidden="true" />
       </a>
     </>}

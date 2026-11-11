@@ -7,17 +7,14 @@
     "variants": {
       "desktop": {
         "video": "media/scenes/cod-desktop.mp4",
-        "poster": "media/scenes/cod-desktop.webp",
         "bytes": 2025468
       },
       "compact": {
         "video": "media/scenes/cod-compact.mp4",
-        "poster": "media/scenes/cod-compact.webp",
         "bytes": 1054300
       },
       "portrait": {
         "video": "media/scenes/cod-portrait.mp4",
-        "poster": "media/scenes/cod-portrait.webp",
         "bytes": 700945
       }
     }
@@ -30,17 +27,14 @@
     "variants": {
       "desktop": {
         "video": "media/scenes/pubg-desktop.mp4",
-        "poster": "media/scenes/pubg-desktop.webp",
         "bytes": 3638970
       },
       "compact": {
         "video": "media/scenes/pubg-compact.mp4",
-        "poster": "media/scenes/pubg-compact.webp",
         "bytes": 1796082
       },
       "portrait": {
         "video": "media/scenes/pubg-portrait.mp4",
-        "poster": "media/scenes/pubg-portrait.webp",
         "bytes": 1594536
       }
     }
@@ -53,17 +47,14 @@
     "variants": {
       "desktop": {
         "video": "media/scenes/mlbb-desktop.mp4",
-        "poster": "media/scenes/mlbb-desktop.webp",
         "bytes": 2576700
       },
       "compact": {
         "video": "media/scenes/mlbb-compact.mp4",
-        "poster": "media/scenes/mlbb-compact.webp",
         "bytes": 1246772
       },
       "portrait": {
         "video": "media/scenes/mlbb-portrait.mp4",
-        "poster": "media/scenes/mlbb-portrait.webp",
         "bytes": 960436
       }
     }
@@ -76,17 +67,14 @@
     "variants": {
       "desktop": {
         "video": "media/scenes/coc-opening-desktop.mp4",
-        "poster": "media/scenes/coc-opening-desktop.webp",
         "bytes": 4824925
       },
       "compact": {
         "video": "media/scenes/coc-opening-compact.mp4",
-        "poster": "media/scenes/coc-opening-compact.webp",
         "bytes": 2413058
       },
       "portrait": {
         "video": "media/scenes/coc-opening-portrait.mp4",
-        "poster": "media/scenes/coc-opening-portrait.webp",
         "bytes": 1755227
       }
     }
