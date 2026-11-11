@@ -14,9 +14,13 @@
   --ambient-crest: var(--ivory);
   --ambient-strength: .32;
 }
-.ambient-field-guide { z-index: -1; }
+.ambient-field-guide, .ambient-field-dialog { z-index: -1; }
+.ambient-field-dialog { --ambient-strength: .5; }
 .ambient-window { position: absolute; inset: 0; overflow: clip; }
-.ambient-field-guide .ambient-window { position: sticky; inset: 0 auto auto; height: 100svh; }
+.ambient-field-guide .ambient-window, .ambient-field-dialog .ambient-window {
+  position: sticky; inset: 0 auto auto; height: 100svh;
+}
+.ambient-field-dialog .ambient-window { height: 100dvh; }
 .ambient-halftone {
   position: absolute;
   inset: 0;

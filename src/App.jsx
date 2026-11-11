@@ -31,7 +31,7 @@ function Ornament() {
   return <span className="ornament" aria-hidden="true"><i /><i /><i /></span>;
 }
 
-function WorldChapter({ chapter, active, warm, visible, variant, progress, reduced, sceneRef, navigate, onGame }) {
+function WorldChapter({ chapter, active, warm, visible, variant, blocked, reduced, sceneRef, navigate, onGame }) {
   const home = chapter.id === 'home';
   return <section ref={sceneRef} className={'world-scene world-' + chapter.art + (active ? ' is-active' : '')}
     aria-labelledby={'title-' + chapter.id} aria-hidden={!active} inert={!active}>
@@ -41,7 +41,8 @@ function WorldChapter({ chapter, active, warm, visible, variant, progress, reduc
           <source media="(max-aspect-ratio: 5/6)" srcSet={art + 'emerald-squad-mobile.webp'} />
           <img className="world-picture" src={art + 'emerald-squad-wide.webp'} alt="" fetchPriority="high" />
         </picture>
-          : <SceneVideo game={chapter} warm={warm} visible={visible} variant={variant} progress={progress} reduced={reduced} />}
+          : <SceneVideo game={chapter} warm={warm} visible={visible} active={active}
+              variant={variant} blocked={blocked} reduced={reduced} />}
       </div>
     </div>
     <div className="world-shade" aria-hidden="true" />
@@ -93,6 +94,7 @@ function NavigationMenu({ open, onClose, navigate, themeControl }) {
   }, [open]);
   return <dialog ref={dialog} className="world-menu" aria-labelledby="menu-title" onClose={onClose}>
     <div className="menu-frame">
+      {open && <AmbientField scene="dialog" active />}
       <div className="menu-top"><span className="eyebrow" id="menu-title">Trinity Showdown</span>
         <div className="toolbar-actions">{themeControl}
           <form method="dialog"><button className="close-menu" autoFocus>Close <span aria-hidden="true">×</span></button></form>
@@ -124,7 +126,7 @@ export default function App() {
   const isModalOpen = menu || Boolean(panel);
   const reduced = useReducedPreference();
   const variant = useMediaVariant();
-  const { active, visible, inGuide, sceneRefs, anchors, progress, goTo } =
+  const { active, visible, inGuide, sceneRefs, anchors, goTo } =
     useSceneJourney(chapters, world, isModalOpen, reduced, guide, sectionIds, header);
   useWorldMotion(world, !isModalOpen && !reduced && !inGuide);
   useWorldMotion(guide, !isModalOpen && !reduced && inGuide);
@@ -202,8 +204,8 @@ export default function App() {
       <div className={'world-stage' + (inGuide ? ' is-behind-guide' : '')} ref={world} inert={inGuide} aria-hidden={inGuide || undefined}>
         <div className="stage-scenes" id="chapter-content" tabIndex={-1}>
           {chapters.map((chapter, index) => <WorldChapter key={chapter.id} chapter={chapter}
-            active={active === index} warm={!inGuide && (Math.abs(index - active) <= 1 || visible.includes(index))}
-            visible={visible.includes(index)} variant={variant} progress={progress.current[index]} reduced={reduced}
+            active={active === index} warm={!inGuide && (index === active + 1 || visible.includes(index))}
+            visible={visible.includes(index)} variant={variant} blocked={isModalOpen} reduced={reduced}
             sceneRef={(node) => { sceneRefs.current[index] = node; }} navigate={navigate} onGame={setSelectedGame} />)}
         </div>
         <div className="transition-veil" aria-hidden="true" />

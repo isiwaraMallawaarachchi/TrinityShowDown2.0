@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { reviewRegistration, rosterRules, rosterSlots, rosterSummary } from './registration.js';
+import { AmbientField } from './motion.jsx';
 import './event-panel.css';
 
 const imageTypes = ['image/jpeg', 'image/png', 'image/webp'];
@@ -179,7 +180,8 @@ export default function RegistrationPortal({ game, onClose, themeControl }) {
   }, [game]);
 
   return <dialog ref={dialog} className="ep-dialog" aria-labelledby="registration-panel-title" onClose={onClose}>
-    {game && <>
+    {game && <div className="ep-frame">
+      <AmbientField scene="dialog" active />
       <div className="ep-toolbar">
         <p className="eyebrow">Trinity Showdown · Registration</p>
         <div className="toolbar-actions">{themeControl}
@@ -193,6 +195,6 @@ export default function RegistrationPortal({ game, onClose, themeControl }) {
         <p className="entry-status" id="registration-status">Registration submissions aren’t open yet.</p>
         <RegistrationForm key={game.id} game={game} />
       </div>
-    </>}
+    </div>}
   </dialog>;
 }

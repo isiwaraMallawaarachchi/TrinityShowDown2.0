@@ -370,7 +370,7 @@ function Rules() {
 
 function DownloadIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 3v12m-5-5 5 5 5-5" />
+    <path className="rulebook-icon-arrow" d="M12 3v12m-5-5 5 5 5-5" />
     <path d="M4 16v4h16v-4" />
   </svg>;
 }
@@ -379,14 +379,19 @@ function Rulebooks() {
   return <section className="guide-section guide-rulebooks" id="rulebooks" tabIndex={-1} aria-labelledby="rulebooks-title">
     <SectionHeading id="rulebooks-title" title="Game rulebooks" />
     <ul className="rulebooks" role="list">
-      {games.map((game) => <li key={game.id}>
-        <span>{game.name}</span>
-        {game.rulebookUrl
-          ? <a className="rulebook-download" href={game.rulebookUrl} download aria-label={`Download ${game.name} rulebook (PDF)`}>
-            <DownloadIcon /> Download PDF
-          </a>
-          : <span className="rulebook-pending">PDF coming soon</span>}
-      </li>)}
+      {games.map((game) => {
+        const Card = game.rulebookUrl ? 'a' : 'div';
+        return <li key={game.id}>
+          <Card className="rulebook-card" href={game.rulebookUrl} download={game.rulebookUrl ? true : undefined}>
+            <span className="rulebook-art"><GameArtwork game={game} /></span>
+            <span className="rulebook-copy">
+              <span className="rulebook-name">{game.name}</span>
+              <span className="rulebook-status">{game.rulebookUrl ? 'Download PDF' : 'PDF coming soon'}</span>
+            </span>
+            <span className="rulebook-icon"><DownloadIcon /></span>
+          </Card>
+        </li>;
+      })}
     </ul>
   </section>;
 }

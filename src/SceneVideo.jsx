@@ -1,80 +1,74 @@
 import { useEffect, useRef, useState } from 'react';
 import manifest from './scene-media.json';
-import { createMediaScrubber } from './media-scrubber.js';
 import GameArtwork from './GameArtwork.jsx';
 
-const clips = new Map();
 const asset = (file) => `${import.meta.env.BASE_URL}${file}`;
+const constrained = () => navigator.connection?.saveData ||
+  ['slow-2g', '2g', '3g'].includes(navigator.connection?.effectiveType);
 
-// Fetch a complete tiny clip before scrubbing: seeks never trigger remote byte-range fetches.
-// Only the current chapter and its neighbours retain blobs; leaving that window releases them.
-function acquireClip(src) {
-  let entry = clips.get(src);
-  if (!entry) {
-    const controller = new AbortController();
-    entry = { refs: 0, controller, url: null, promise: null };
-    entry.promise = fetch(src, { signal: controller.signal, priority: 'low' })
-      .then((response) => { if (!response.ok) throw new Error(`Media ${response.status}`); return response.blob(); })
-      .then((blob) => { if (!entry.refs) throw new DOMException('Released', 'AbortError'); entry.url = URL.createObjectURL(blob); return entry.url; });
-    clips.set(src, entry);
-  }
-  entry.refs++;
-  return {
-    promise: entry.promise,
-    release() {
-      if (--entry.refs > 0) return;
-      entry.controller.abort();
-      if (entry.url) URL.revokeObjectURL(entry.url);
-      if (clips.get(src) === entry) clips.delete(src);
-    },
-  };
+function selectVariant() {
+  if (window.matchMedia('(max-width: 680px) and (max-aspect-ratio: 3/4)').matches) return 'portrait';
+  if (constrained()) return 'compact';
+  const density = Math.min(window.devicePixelRatio || 1, 1.5);
+  return Math.max(window.innerWidth, window.innerHeight * 16 / 9) * density >= 1280 ? 'desktop' : 'compact';
 }
 
 export function useMediaVariant() {
-  function select() {
-    if (window.matchMedia('(max-width: 600px) and (orientation: portrait)').matches) return 'portrait';
-    if (navigator.connection?.saveData || ['slow-2g', '2g'].includes(navigator.connection?.effectiveType)) return 'compact';
-    return window.innerWidth * Math.min(window.devicePixelRatio || 1, 1.5) > 1440 || window.innerHeight > 900 ? 'desktop' : 'compact';
-  }
-  const [variant, setVariant] = useState(select);
+  const [variant, setVariant] = useState(selectVariant);
   useEffect(() => {
     let timer;
-    const resize = () => { clearTimeout(timer); timer = setTimeout(() => setVariant(select()), 180); };
-    window.addEventListener('resize', resize);
-    return () => { clearTimeout(timer); window.removeEventListener('resize', resize); };
+    const update = () => { clearTimeout(timer); timer = setTimeout(() => setVariant(selectVariant()), 180); };
+    window.addEventListener('resize', update);
+    navigator.connection?.addEventListener('change', update);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', update);
+      navigator.connection?.removeEventListener('change', update);
+    };
   }, []);
   return variant;
 }
 
-export default function SceneVideo({ game, warm, visible, variant, progress, reduced }) {
-  const media = manifest[game.art];
-  const files = media.variants[variant];
-  const [resource, setResource] = useState(null);
-  const [readySource, setReadySource] = useState(null);
+function SceneFilm({ game, variant, active, blocked, reduced }) {
+  const [decoded, setDecoded] = useState(false);
   const video = useRef(null);
-  const source = asset(files.video);
-  const blob = warm && !reduced && resource?.source === source && clips.get(source)?.url === resource.url ? resource.url : null;
-
-  useEffect(() => {
-    if (!warm || reduced) return;
-    let alive = true;
-    const lease = acquireClip(source);
-    lease.promise.then((url) => { if (alive) setResource({ source, url }); }).catch(() => { /* Game artwork remains visible on network failure. */ });
-    return () => { alive = false; lease.release(); };
-  }, [source, warm, reduced]);
 
   useEffect(() => {
     const element = video.current;
-    if (!element || !blob || !visible || reduced) return;
-    const scrubber = createMediaScrubber(element, { fps: media.fps, duration: media.duration, onReady: () => setReadySource(blob) });
-    const unsubscribe = progress.subscribe(scrubber.setProgress);
-    const visibility = () => { if (!document.hidden) scrubber.refresh(); };
-    document.addEventListener('visibilitychange', visibility);
-    return () => { unsubscribe(); scrubber.destroy(); setReadySource(null); document.removeEventListener('visibilitychange', visibility); };
-  }, [blob, visible, reduced, media, progress]);
+    if (!element || !active || blocked) return;
+    function syncPlayback() {
+      if (document.hidden) element.pause();
+      // A finished clip stays on its last frame while this scene is mounted.
+      else if (element.paused && !element.ended) {
+        element.play().catch(() => { /* If autoplay is unavailable, show the still artwork or decoded frame. */ });
+      }
+    }
+    syncPlayback();
+    document.addEventListener('visibilitychange', syncPlayback);
+    return () => {
+      document.removeEventListener('visibilitychange', syncPlayback);
+      element.pause();
+    };
+  }, [active, blocked, reduced]);
 
-  return <div className="scene-film" data-media={game.art} data-variant={variant} data-ready={Boolean(blob && readySource === blob)}>
-    {(warm || visible) && <GameArtwork game={game} className="film-poster" loading="eager" />}
-    {blob && visible && !reduced && <video ref={video} className={`film-video${readySource === blob ? ' is-decoded' : ''}`} src={blob} muted playsInline preload="auto" disablePictureInPicture controlsList="nodownload noremoteplayback" aria-hidden="true" tabIndex={-1} />}
+  return <div className="scene-film" data-media={game.art} data-variant={variant} data-ready={!reduced && decoded}>
+    <GameArtwork game={game} className="film-poster" loading="eager" />
+    {!reduced && <video ref={video} className={`film-video${decoded ? ' is-decoded' : ''}`}
+      src={asset(manifest[game.art].variants[variant].video)} muted playsInline
+      preload={active || !constrained() ? 'auto' : 'metadata'}
+      onLoadedData={() => setDecoded(true)} onPlaying={() => setDecoded(true)} onError={() => setDecoded(false)}
+      disablePictureInPicture disableRemotePlayback aria-hidden="true" tabIndex={-1} />}
   </div>;
+}
+
+export default function SceneVideo({ game, warm, visible, active, blocked, variant, reduced }) {
+  const [retainedVariant, setRetainedVariant] = useState(variant);
+  useEffect(() => {
+    // Keep the same element and playhead through orientation changes while on screen.
+    if (!visible) setRetainedVariant(variant);
+  }, [variant, visible]);
+  if (!warm) return null;
+  const quality = visible ? retainedVariant : variant;
+  return <SceneFilm key={`${quality}:${reduced}`} game={game} variant={quality} active={active}
+    blocked={blocked} reduced={reduced} />;
 }

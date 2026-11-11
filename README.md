@@ -19,20 +19,19 @@ The landing uses the supplied Emerald Shadow Squad artwork, with a full-width We
 
 - `src/App.jsx`: chapters, navigation, dialogs and landing composition.
 - `src/content.js`: game order and placeholder event copy.
-- `src/SceneVideo.jsx`: responsive media, adjacent-scene prefetch, poster fallback and bounded blob lifetime.
-- `src/media-scrubber.js`: frame-quantized seeks, one seek in flight, latest target wins; no autoplay or idle playback.
-- `src/scene-timeline.js`: reversible scroll composition and frame progress.
+- `src/SceneVideo.jsx`: responsive media, next-scene preloading, autoplay and poster fallback.
+- `src/scene-timeline.js`: reversible scroll composition.
 - `src/useSceneJourney.js`: native scrolling, finite easing, chapter links and responsive geometry.
 - `src/styles.css`, `src/motion.css`, `src/event-panel.css`: composition, pointer depth and typography.
 - `src/scene-media.json`: generated media manifest.
 - `public/media/scenes`: optimized MP4 clips.
 - `public/art/game-art`: supplied game artwork shared by the guide, registration, and video fallback.
 
-A game spans 185% of the small viewport height. Its first frame holds during entry, the clip scrubs through the central span, and its last frame holds during exit. Only currently visible videos decode; the current and adjacent chapters retain downloaded clips. A complete clip becomes a local blob before seeking, avoiding network range requests during scrubbing. The supplied game artwork is visible before decoding, on media failure, and with reduced motion. Touch devices do not get pointer parallax. No custom wheel interception or scroll snapping is used.
+A game spans 135% of the small viewport height (120% on narrow screens). Its video autoplays muted and inline once the scene becomes active, then holds the last frame. Scrolling can move on before playback ends. The browser can buffer the upcoming clip and start playback before the entire file downloads. Leaving the scene pauses its video; leaving it fully behind releases it so a later visit starts from the beginning. The supplied game artwork is visible before decoding, on media failure, and with reduced motion. Touch devices do not get pointer parallax. No custom wheel interception or scroll snapping is used.
 
 ## Public sections
 
-The landing page includes the registration clock and links to the four scroll-driven game films. The guide starts with the grand prize pool and event timeline, followed by game details, competing teams, rules and eligibility, rulebooks, registration, About, contact, and the footer.
+The landing page includes the registration clock and links to the four autoplaying game films. The guide starts with the grand prize pool and event timeline, followed by game details, competing teams, rules and eligibility, rulebooks, registration, About, contact, and the footer.
 
 - Set `event.registrationClosesAt` in `src/content.js` or provide `VITE_REGISTRATION_CLOSES_AT` as an ISO 8601 timestamp with an explicit UTC offset. Both countdowns use the same deadline and show a pending state until it is confirmed.
 - Set `event.prizePool` and each game's `prizePool` in `src/content.js` to the announced amounts.
@@ -57,13 +56,13 @@ Originals remain unchanged in `../../Ref vIdeo`. Run `npm run media:prepare` (or
 | MLBB | 4.15 s | 3.58 s |
 | COC | 0.00 s | 2.50 s |
 
-Outputs use H.264 MP4, 24 fps, keyframes every four frames, no B-frames, no audio and front-loaded metadata. Desktop retains original resolution; compact is 1280 pixels wide; portrait uses a subject-focused 9:16 crop. MLBB's letterbox is removed. Mild color correction preserves the source art. Desktop clips total about 12.6 MiB, portrait about 4.8 MiB. All variants are not downloaded together.
+Outputs use H.264 MP4 at the source's native 24 fps, with no audio and front-loaded metadata for progressive playback. Desktop retains the source resolution; compact is 1280 pixels wide; portrait uses a subject-focused 9:16 crop. MLBB's letterbox is removed. Mild color correction preserves the source art. Desktop clips total about 11.1 MiB, compact about 4.9 MiB, and portrait about 4.0 MiB. The site requests one variant per clip.
 
-Instant video loading cannot be guaranteed over every network. Posters provide immediate scene composition; prefetch and local scrubbing reduce interruptions. Production hosting should serve correct MIME types with caching and compression for text assets. Change asset URLs or revalidate caches when replacing clips. Physical Android/iOS, Safari and Firefox testing remains necessary before launch.
+Posters provide immediate scene composition when network conditions or browser settings delay autoplay. Production hosting should serve `video/mp4` with byte-range support and caching, and compress text assets. Bump the video URL version when replacing clips.
 
 ## Checks
 
-Automated tests cover deadline states, game order, seek coalescing, stationary behavior, reverse/end boundaries, delayed metadata, hidden-tab behavior, cleanup, chapter boundaries, transition overlap and system reduced motion. Browser checks cover desktop/portrait media decoding, forward/reverse scrolling, navigation and responsive overflow. See `../../docs/previews` for visual captures.
+Automated tests cover deadline states, registration, game order, fast-start MP4 layout, chapter boundaries, transition overlap and system reduced motion. See `../../docs/previews` for visual captures.
 
 ## Content boundaries
 

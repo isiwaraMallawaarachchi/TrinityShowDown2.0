@@ -16,18 +16,7 @@ export function sceneTimeline(y, starts, viewportHeight, reduced = false) {
     const opacity = reduced ? Number(i === active) : Math.min(enter, 1 - exit);
     const copy = reduced ? opacity : clamp((opacity - .45) / .55);
     if (enter > 0 && enter < 1) crossing = Math.sin(enter * Math.PI);
-    const span = next === undefined ? viewportHeight : Math.max(1, next - start - travel);
-    return { opacity, copy, scale: reduced ? 1 : 1 + (1 - enter) * .055 + exit * .11, video: clamp((y - start) / span) };
+    return { opacity, copy, scale: reduced ? 1 : 1 + (1 - enter) * .055 + exit * .11 };
   });
   return { active, scenes, veil: reduced ? 0 : crossing * .72 };
-}
-
-export function createProgressSignal() {
-  let value = 0;
-  const listeners = new Set();
-  return {
-    get: () => value,
-    set(next) { if (next === value) return; value = next; listeners.forEach((listener) => listener(value)); },
-    subscribe(listener) { listeners.add(listener); listener(value); return () => listeners.delete(listener); },
-  };
 }

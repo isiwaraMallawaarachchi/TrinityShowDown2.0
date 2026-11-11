@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { clamp, createProgressSignal, sceneTimeline } from './scene-timeline.js';
+import { clamp, sceneTimeline } from './scene-timeline.js';
 
 export function useSceneJourney(chapters, world, blocked, reduced, guide, sectionIds, header) {
   const [active, setActive] = useState(0);
@@ -9,7 +9,6 @@ export function useSceneJourney(chapters, world, blocked, reduced, guide, sectio
   const activeRef = useRef(0);
   const sceneRefs = useRef([]);
   const anchors = useRef([]);
-  const progress = useRef(chapters.map(() => createProgressSignal()));
   const lastVisible = useRef('0');
   const lastY = useRef(0);
 
@@ -74,11 +73,9 @@ export function useSceneJourney(chapters, world, blocked, reduced, guide, sectio
         node.style.setProperty('--scene-scale', scene.scale.toFixed(4));
         node.style.setProperty('--copy-opacity', scene.copy.toFixed(4));
         node.style.setProperty('--copy-y', `${((1 - scene.copy) * 18).toFixed(2)}px`);
-        progress.current[i].set(scene.video);
         if (scene.opacity > .001) visibleNow.push(i);
       });
       world.current?.style.setProperty('--veil-opacity', state.veil.toFixed(4));
-      world.current?.style.setProperty('--chapter-progress', state.scenes[state.active].video.toFixed(4));
       const key = visibleNow.join(',');
       if (key !== lastVisible.current) { lastVisible.current = key; setVisible(visibleNow); }
       if (state.active !== activeRef.current || wasInGuide) {
@@ -141,5 +138,5 @@ export function useSceneJourney(chapters, world, blocked, reduced, guide, sectio
     target.scrollIntoView({ behavior: reduced || guideActive.current ? 'instant' : 'smooth', block: 'start' });
   }, [chapters, reduced]);
 
-  return { active, visible, inGuide, sceneRefs, anchors, progress, goTo };
+  return { active, visible, inGuide, sceneRefs, anchors, goTo };
 }

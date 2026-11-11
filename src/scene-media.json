@@ -6,16 +6,16 @@
     "start": 2.95,
     "variants": {
       "desktop": {
-        "video": "media/scenes/cod-desktop.mp4",
-        "bytes": 2025468
+        "video": "media/scenes/cod-desktop.mp4?v=2",
+        "bytes": 2198023
       },
       "compact": {
-        "video": "media/scenes/cod-compact.mp4",
-        "bytes": 1054300
+        "video": "media/scenes/cod-compact.mp4?v=2",
+        "bytes": 1033473
       },
       "portrait": {
-        "video": "media/scenes/cod-portrait.mp4",
-        "bytes": 700945
+        "video": "media/scenes/cod-portrait.mp4?v=2",
+        "bytes": 714841
       }
     }
   },
@@ -26,16 +26,16 @@
     "start": 2.7,
     "variants": {
       "desktop": {
-        "video": "media/scenes/pubg-desktop.mp4",
-        "bytes": 3638970
+        "video": "media/scenes/pubg-desktop.mp4?v=2",
+        "bytes": 3489033
       },
       "compact": {
-        "video": "media/scenes/pubg-compact.mp4",
-        "bytes": 1796082
+        "video": "media/scenes/pubg-compact.mp4?v=2",
+        "bytes": 1524271
       },
       "portrait": {
-        "video": "media/scenes/pubg-portrait.mp4",
-        "bytes": 1594536
+        "video": "media/scenes/pubg-portrait.mp4?v=2",
+        "bytes": 1410842
       }
     }
   },
@@ -46,16 +46,16 @@
     "start": 4.15,
     "variants": {
       "desktop": {
-        "video": "media/scenes/mlbb-desktop.mp4",
-        "bytes": 2576700
+        "video": "media/scenes/mlbb-desktop.mp4?v=2",
+        "bytes": 2854846
       },
       "compact": {
-        "video": "media/scenes/mlbb-compact.mp4",
-        "bytes": 1246772
+        "video": "media/scenes/mlbb-compact.mp4?v=2",
+        "bytes": 1279847
       },
       "portrait": {
-        "video": "media/scenes/mlbb-portrait.mp4",
-        "bytes": 960436
+        "video": "media/scenes/mlbb-portrait.mp4?v=2",
+        "bytes": 955761
       }
     }
   },
@@ -66,16 +66,16 @@
     "start": 0,
     "variants": {
       "desktop": {
-        "video": "media/scenes/coc-opening-desktop.mp4",
-        "bytes": 4824925
+        "video": "media/scenes/coc-opening-desktop.mp4?v=2",
+        "bytes": 3125981
       },
       "compact": {
-        "video": "media/scenes/coc-opening-compact.mp4",
-        "bytes": 2413058
+        "video": "media/scenes/coc-opening-compact.mp4?v=2",
+        "bytes": 1336352
       },
       "portrait": {
-        "video": "media/scenes/coc-opening-portrait.mp4",
-        "bytes": 1755227
+        "video": "media/scenes/coc-opening-portrait.mp4?v=2",
+        "bytes": 1086974
       }
     }
   }
