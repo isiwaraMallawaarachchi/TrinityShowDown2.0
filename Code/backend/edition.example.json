@@ -1,0 +1,24 @@
+{
+  "slug": "trinity-showdown",
+  "title": "Trinity Showdown",
+  "registrationOpensAt": null,
+  "registrationClosesAt": null,
+  "publicLaunchAt": null,
+  "eventStartsAt": null,
+  "eventEndsAt": null,
+  "venue": null,
+  "institutions": ["Example University"],
+  "privacy": { "version": "1", "body": "Add the approved privacy notice." },
+  "games": [
+    {
+      "game": "cod-mobile",
+      "formVersion": 1,
+      "rulebookVersion": "1",
+      "rulebookFile": "rulebooks/cod-mobile.pdf",
+      "starters": 5,
+      "substitutes": 1,
+      "fee": "1000.00",
+      "bankInstructions": "Add the approved bank transfer instructions."
+    }
+  ]
+}

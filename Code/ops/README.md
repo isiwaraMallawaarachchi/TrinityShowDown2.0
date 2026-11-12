@@ -1,32 +1,32 @@
-# Automatic Azure deployment
+# Host Trinity Showdown
 
-GitHub Actions tests both Node projects and builds the public frontend. A push to `main` deploys the tested bundle once the repository variable `AZURE_DEPLOY_ENABLED` is set to `true`. Pull requests run the checks without deploying.
+## Ubuntu server
 
-## One-time setup
+1. Install Node.js 24 and Caddy. Set up PostgreSQL and build the app using the [setup guide](../README.md). For managed PostgreSQL, use the provider's hostname and TLS settings in `DATABASE_URL`.
+2. Set `NODE_ENV=production`, `HOST=127.0.0.1`, `PORT=3000`, `TRUST_PROXY_HOPS=1` and `TRINITY_ORIGIN=https://trinity.example.org` in `backend/.env`. Use your actual hostname and keep registration closed during setup.
+3. Run the backend as a systemd service named `trinity`. Set `User` to the app account, `WorkingDirectory` to the absolute backend path and `ExecStart` to the absolute Node path followed by `--env-file=.env src/server.js`. Set `Restart=on-failure` and `WantedBy=multi-user.target`, then enable and start the service.
+4. Point the domain's A record at the server and allow TCP ports 80 and 443. Add this to `/etc/caddy/Caddyfile`, then reload Caddy.
 
-1. From Windows, use your existing Azure SSH key to upload `Code/ops/deploy-release.sh` to `/home/azureuser/trinity/deploy-release.sh` on `20.87.216.99`.
-2. In an existing SSH session to the VM, run the following. This first points the service at the code already on the VM. Its `.env` stays in `~/trinity/Code/backend/` and each new release uses that file.
-
-   ```bash
-   if [[ ! -L $HOME/trinity/current ]]; then
-     ln -sT "$HOME/trinity/Code" "$HOME/trinity/current"
-   fi
-   sudo install -d /etc/systemd/system/trinity.service.d
-   sudo tee /etc/systemd/system/trinity.service.d/release.conf >/dev/null <<'EOF'
-   [Service]
-   WorkingDirectory=/home/azureuser/trinity/current/backend
-   EOF
-   sudo systemctl daemon-reload && sudo systemctl restart trinity
-   curl -fsS --retry 5 --retry-connrefused --retry-delay 1 http://127.0.0.1:3000/api/health
+   ```caddyfile
+   trinity.example.org {
+       reverse_proxy 127.0.0.1:3000
+   }
    ```
 
-3. Create a dedicated Ed25519 SSH key pair with an empty passphrase for GitHub Actions. Add its **public** key to `/home/azureuser/.ssh/authorized_keys` as a single line beginning with the options below. Keep your personal SSH entry there.
+Check `/api/health` and `/organizer/` over HTTPS. Set up and test database backups before collecting registrations.
+
+## GitHub Actions on Azure
+
+The [workflow](../../.github/workflows/deploy.yml) checks pull requests. When `AZURE_DEPLOY_ENABLED=true`, pushes to `main` build and deploy the app. To set up a replacement VM:
+
+1. Place the initial app in `/home/azureuser/trinity/Code` and its private `.env` in `Code/backend/`. Create `~/trinity/current` as a symlink to `Code` and set the service's `WorkingDirectory` to `/home/azureuser/trinity/current/backend`.
+2. Copy [the release script](deploy-release.sh) to `~/trinity/deploy-release.sh`. Update its Node path and the workflow's SSH destination for the new VM. The app account needs permission to run `sudo -n systemctl restart trinity`.
+3. Add a dedicated SSH public key to `~/.ssh/authorized_keys` with this prefix.
 
    ```text
-   restrict,command="/usr/bin/bash /home/azureuser/trinity/deploy-release.sh" ssh-ed25519 PUBLIC_KEY trinity-github-deploy
+   restrict,command="/usr/bin/bash /home/azureuser/trinity/deploy-release.sh"
    ```
 
-4. In **GitHub → Settings → Secrets and variables → Actions**, add `AZURE_DEPLOY_KEY` with the dedicated **private** key. Add `AZURE_SSH_KNOWN_HOSTS` with the verified Azure VM host-key line from the Windows `known_hosts` file. `ssh-keygen -F 20.87.216.99` finds the saved line. Copy the line with the key itself, excluding the `# Host` comment.
-5. Add the Actions repository variable `AZURE_DEPLOY_ENABLED` with value `true`. Run **Actions → Check and deploy Trinity Showdown → Run workflow** on `main`, or push a new commit to `main`. Verify that the deploy step reports the commit ID and open the HTTPS site to check the update.
+4. In GitHub Actions settings, add the private key as `AZURE_DEPLOY_KEY` and the verified VM host key line as `AZURE_SSH_KNOWN_HOSTS`. Set the repository variable `AZURE_DEPLOY_ENABLED` to `true`.
 
-The VM installs production dependencies in a separate release directory before switching `~/trinity/current`. The deployment restarts the service, checks `/api/health`, and switches back if the new release fails. Old release directories remain under `~/trinity/releases/`. Use `~/trinity/current/backend` for maintenance commands that need the running version of the app. Apply new database migrations separately before deploying code that depends on them.
+Check **Deploy to Azure** in the Actions run. The release script restores the previous release if the health check fails. Apply new database migrations separately.

@@ -1,3 +1,7 @@
 # Trinity Showdown
 
-The public website, backend, organizer dashboard, and database migrations live together under [`Code/`](Code/README.md). See the [Azure deployment setup](Code/ops/README.md) for automatic updates from `main`.
+University esports tournament site with team registration and an organizer dashboard.
+
+- [Run locally and configure registration](Code/README.md)
+- [Host the app and set up Azure deployments](Code/ops/README.md)
+- [Event requirements](docs/SRS.md)
