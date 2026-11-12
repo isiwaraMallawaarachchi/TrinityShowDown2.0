@@ -1,0 +1,26 @@
+{
+  "name": "trinity-showdown-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.15"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "edition": "node --env-file-if-exists=.env scripts/configure-edition.js",
+    "organizers": "node --env-file-if-exists=.env scripts/organizers.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.0.0",
+    "multer": "^2.5.0",
+    "nodemailer": "^10.5.0",
+    "pg": "^8.16.0",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.4.0"
+  }
+}

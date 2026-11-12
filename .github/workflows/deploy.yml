@@ -1,0 +1,55 @@
+name: Check and deploy Trinity Showdown
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trinity-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Test and build the app
+        working-directory: Code
+        run: |
+          npm --prefix frontend ci
+          npm --prefix backend ci
+          npm --prefix frontend test
+          npm --prefix backend test
+          npm --prefix frontend run build
+          tar -czf "$RUNNER_TEMP/trinity-release.tar.gz" \
+            frontend/dist backend/package.json backend/package-lock.json \
+            backend/src backend/scripts organizer-frontend database
+      - name: Deploy to Azure
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.AZURE_DEPLOY_ENABLED == 'true'
+        env:
+          DEPLOY_KEY: ${{ secrets.AZURE_DEPLOY_KEY }}
+          KNOWN_HOSTS: ${{ secrets.AZURE_SSH_KNOWN_HOSTS }}
+        run: |
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          umask 077
+          ssh_dir=$(mktemp -d)
+          trap 'rm -rf -- "$ssh_dir"' EXIT
+          printf '%s\n' "$DEPLOY_KEY" > "$ssh_dir/key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          ssh -T -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$ssh_dir/known_hosts" -o ConnectTimeout=15 \
+            -i "$ssh_dir/key" azureuser@20.87.216.99 "deploy $GITHUB_SHA" \
+            < "$RUNNER_TEMP/trinity-release.tar.gz"
