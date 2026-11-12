@@ -9,67 +9,96 @@
   <script type="module" src="./workspace.js"></script>
 </head>
 <body>
-  <main>
-    <section class="auth panel" id="auth" hidden aria-labelledby="auth-title">
-      <img class="mark" src="/art/trinity.svg" alt="Trinity Showdown" width="160" height="71">
-      <h1 id="auth-title">Organizer sign in</h1>
-      <form id="login">
-        <label>Email <input name="email" type="email" autocomplete="username" required maxlength="254"></label>
-        <label>Password <input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
-        <button class="primary">Sign in</button>
-      </form>
-      <form id="accept" hidden>
-        <label>Display name <input name="name" autocomplete="name" required maxlength="100"></label>
-        <label>Create a password <input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>
-        <small>Use at least 12 characters.</small>
-        <button class="primary">Accept invitation</button>
-      </form>
-    </section>
-    <section id="workspace" hidden aria-labelledby="workspace-title">
-      <header class="masthead">
-        <img class="mark" src="/art/trinity.svg" alt="Trinity Showdown" width="130" height="58">
-        <div><h1 id="workspace-title">Organizer workspace</h1><p id="account"></p></div>
-        <button id="logout">Sign out</button>
-      </header>
-      <div class="actions">
-        <details class="invite panel">
-          <summary>Invite an organizer</summary>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <img src="/art/trinity-frosted-clear.webp" alt="" width="58" height="28">
+        <span>Trinity Showdown</span>
+      </div>
+      <a class="button site-link" href="/">Public site <span aria-hidden="true">↗</span></a>
+      <div class="topbar-actions">
+        <button id="theme" type="button" aria-pressed="false">Dark mode</button>
+        <div class="account-tools" id="account-tools" hidden>
+          <span id="account"></span>
+          <button id="logout" type="button">Sign out</button>
+        </div>
+      </div>
+    </header>
+    <main>
+      <section class="auth panel" id="auth" hidden aria-labelledby="auth-title">
+        <div class="auth-art" aria-hidden="true">
+          <img src="/art/trinity-frosted-clear.webp" alt="" width="480" height="227">
+        </div>
+        <div class="auth-body">
+          <h1 id="auth-title">Organizer sign in</h1>
+          <form id="login">
+            <label>Email <input name="email" type="email" autocomplete="username" required maxlength="254"></label>
+            <label>Password <input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
+            <button class="primary" type="submit">Sign in <span aria-hidden="true">→</span></button>
+          </form>
+          <form id="accept" hidden>
+            <label>Display name <input name="name" autocomplete="name" required maxlength="100"></label>
+            <label>Create a password <input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required aria-describedby="password-help"></label>
+            <small id="password-help">Use at least 12 characters.</small>
+            <button class="primary" type="submit">Accept invitation <span aria-hidden="true">→</span></button>
+          </form>
+        </div>
+      </section>
+      <section id="workspace" hidden aria-labelledby="workspace-title">
+        <header class="workspace-heading">
+          <h1 id="workspace-title">Organizer workspace</h1>
+          <button class="primary" id="open-invite" type="button"><span aria-hidden="true">+</span> Invite organizer</button>
+        </header>
+        <div class="workspace-grid">
+          <section class="panel queue" aria-labelledby="queue-title">
+            <div class="queue-header">
+              <h2 id="queue-title">Registrations</h2>
+              <a class="button" href="/api/organizer/registrations/export.csv">Export CSV</a>
+            </div>
+            <div class="filters">
+              <div class="filter">
+                <label for="game">Game</label>
+                <select id="game">
+                  <option value="">All games</option><option value="cod-mobile">COD Mobile</option>
+                  <option value="pubg-mobile">PUBG Mobile</option><option value="mlbb">Mobile Legends</option>
+                  <option value="clash-of-clans">Clash of Clans</option>
+                </select>
+              </div>
+              <div class="filter">
+                <label for="status">Status</label>
+                <select id="status">
+                  <option value="">All statuses</option><option value="submitted" selected>Submitted</option>
+                  <option value="approved">Approved</option><option value="rejected">Rejected</option>
+                </select>
+              </div>
+            </div>
+            <ul id="entries"></ul>
+            <div class="pager">
+              <button id="previous" type="button" disabled>Previous</button>
+              <span id="page" aria-live="polite">Page 1</span>
+              <button id="more" type="button" disabled>Next</button>
+            </div>
+          </section>
+          <section class="panel detail" id="detail" aria-label="Registration details" tabindex="-1"></section>
+        </div>
+        <dialog class="panel invite" id="invite-dialog" aria-labelledby="invite-title">
+          <header class="queue-header">
+            <h2 id="invite-title">Invite an organizer</h2>
+            <form method="dialog"><button type="submit">Close</button></form>
+          </header>
           <form id="invite">
-            <label>Email <input type="email" name="email" maxlength="254" required></label>
-            <button class="primary">Create invitation link</button>
+            <label>Email <input type="email" name="email" maxlength="254" required autofocus></label>
+            <button class="primary" type="submit">Create invitation link</button>
           </form>
           <div id="invite-result" hidden>
             <label>Share this link privately <input id="invite-link" readonly></label>
             <small>Expires in 48 hours.</small>
           </div>
-        </details>
-        <a class="button" href="/api/organizer/registrations/export.csv">Export registrations</a>
-      </div>
-      <div class="workspace-grid">
-        <section class="panel queue" aria-labelledby="queue-title">
-          <h2 id="queue-title">Registrations</h2>
-          <div class="filters">
-            <label>Game <select id="game">
-              <option value="">All games</option><option value="cod-mobile">COD Mobile</option>
-              <option value="pubg-mobile">PUBG Mobile</option><option value="mlbb">Mobile Legends</option>
-              <option value="clash-of-clans">Clash of Clans</option>
-            </select></label>
-            <label>Status <select id="status">
-              <option value="">All statuses</option><option value="submitted" selected>Submitted</option>
-              <option value="approved">Approved</option><option value="rejected">Rejected</option>
-            </select></label>
-          </div>
-          <ul id="entries"></ul>
-          <div class="pager">
-            <button id="previous" disabled>Previous</button><span id="page">Page 1</span><button id="more" disabled>Next</button>
-          </div>
-        </section>
-        <section class="panel detail" id="detail" aria-label="Registration details" tabindex="-1">
-          <p>Select a registration to review its details.</p>
-        </section>
-      </div>
-    </section>
-    <p id="notice" role="status" aria-live="polite" hidden></p>
-  </main>
+          <p class="form-message" id="invite-notice" role="status" hidden></p>
+        </dialog>
+      </section>
+      <p id="notice" role="status" hidden></p>
+    </main>
+  </div>
 </body>
 </html>

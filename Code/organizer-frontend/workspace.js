@@ -16,9 +16,36 @@ function element(tag, value, className) {
   return node;
 }
 
-function notify(message) {
-  get('notice').textContent = message;
-  get('notice').hidden = !message;
+function notify(message, id = 'notice') {
+  const notice = get(id);
+  notice.textContent = message;
+  notice.hidden = !message;
+}
+
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  get('theme').setAttribute('aria-pressed', String(theme === 'dark'));
+}
+
+function initializeTheme() {
+  let theme;
+  try { theme = localStorage.getItem('trinity-theme'); } catch {}
+  if (theme !== 'light' && theme !== 'dark') {
+    theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  setTheme(theme);
+}
+
+function statusBadge(status) {
+  const badge = element('span', names[status], 'badge');
+  badge.dataset.status = status;
+  return badge;
+}
+
+function clearDetail() {
+  const empty = element('div', undefined, 'empty-detail');
+  empty.append(element('h2', 'Registration details'), element('p', 'Select a registration to review its details.'));
+  get('detail').replaceChildren(empty);
 }
 
 async function api(path, values) {
@@ -46,12 +73,14 @@ function showSignIn(accepting = false) {
   get('accept').hidden = !accepting;
   get('auth-title').textContent = accepting ? 'Accept organizer invitation' : 'Organizer sign in';
   get('account').textContent = '';
+  get('account-tools').hidden = true;
   get('entries').replaceChildren();
-  get('detail').replaceChildren(element('p', 'Select a registration to review its details.'));
+  clearDetail();
+  get('invite-dialog').close();
   get('invite').reset();
-  get('invite').closest('details').open = false;
   get('invite-link').value = '';
   get('invite-result').hidden = true;
+  notify('', 'invite-notice');
 }
 
 async function showWorkspace(user) {
@@ -60,19 +89,20 @@ async function showWorkspace(user) {
   get('auth').hidden = true;
   get('workspace').hidden = false;
   get('account').textContent = user.name;
+  get('account-tools').hidden = false;
   await loadList();
 }
 
-function withForm(form, handler) {
+function withForm(form, handler, report = notify) {
   form.addEventListener('submit', async event => {
     event.preventDefault();
     const button = form.querySelector('button[type=submit], button:not([type])');
     button.disabled = true;
-    notify('');
+    report('');
     try {
       await handler(Object.fromEntries(new FormData(form)));
     } catch (error) {
-      notify(error.message);
+      report(error.message);
     } finally {
       button.disabled = false;
     }
@@ -90,13 +120,13 @@ async function loadList() {
       const button = element('button', undefined, 'entry');
       button.dataset.entry = entry.id;
       button.setAttribute('aria-current', String(entry.id === selectedId));
-      button.append(element('strong', entry.team_name), element('small', entry.game_name + ' · ' + names[entry.status]),
+      button.append(element('strong', entry.team_name), statusBadge(entry.status), element('small', entry.game_name),
         element('small', time.format(new Date(entry.submitted_at))));
       button.addEventListener('click', () => loadDetail(entry.id, true));
       item.append(button);
       return item;
     }));
-    if (!result.entries.length) get('entries').append(element('li', 'No registrations match these filters.', 'muted'));
+    if (!result.entries.length) get('entries').append(element('li', 'No registrations match these filters.', 'queue-empty muted'));
     get('page').textContent = 'Page ' + page;
     get('previous').disabled = page === 1;
     get('more').disabled = !result.hasNext;
@@ -160,7 +190,7 @@ function reviewControls(entry) {
   reason.required = true;
   reason.maxLength = 1000;
   label.append(reason);
-  reject.append(label, element('button', 'Reject registration'));
+  reject.append(label, element('button', 'Reject registration', 'danger'));
   withForm(reject, values => decide('rejected', values));
   section.append(reject);
   return section;
@@ -168,15 +198,18 @@ function reviewControls(entry) {
 
 function renderDetail(entry) {
   const detail = get('detail');
-  const title = element('h2', entry.team_name);
+  const header = element('header', undefined, 'detail-header');
+  header.append(element('h2', entry.team_name), statusBadge(entry.status));
   const overview = facts({
-    Game: entry.game_name, Status: names[entry.status], Submitted: time.format(new Date(entry.submitted_at)),
+    Game: entry.game_name, Submitted: time.format(new Date(entry.submitted_at)),
     Captain: entry.captain_name, Email: entry.captain_email, Phone: entry.captain_phone, Reference: entry.id,
     'Form version': entry.form_version, 'Rulebook version': entry.rulebook_version, 'Privacy notice': entry.privacy_version,
     ...Object.fromEntries(Object.entries(entry.entry_fields).map(([key, value]) => [key, JSON.stringify(value)])),
   });
-  const attachments = element('div', undefined, 'images');
-  attachments.append(image('Team logo', entry.images.logo), image('Bank transfer proof', entry.images.proof));
+  const attachments = element('section');
+  const files = element('div', undefined, 'images');
+  files.append(image('Team logo', entry.images.logo), image('Bank transfer proof', entry.images.proof));
+  attachments.append(element('h3', 'Attachments'), files);
   const roster = element('section');
   roster.append(element('h3', 'Roster'));
   for (const player of entry.players) {
@@ -195,12 +228,12 @@ function renderDetail(entry) {
     playerCard.append(photos);
     roster.append(playerCard);
   }
-  detail.replaceChildren(title, overview, attachments, roster);
+  detail.replaceChildren(header, overview, attachments, roster);
   if (entry.status !== 'rejected') detail.append(reviewControls(entry));
   if (entry.decisions.length) {
     const history = element('section');
     history.append(element('h3', 'Review history'));
-    const list = element('ul');
+    const list = element('ul', undefined, 'review-history');
     for (const decision of entry.decisions) {
       const description = `${names[decision.to_status]} by ${decision.organizer} · ${time.format(new Date(decision.decided_at))}`;
       list.append(element('li', decision.reason ? `${description} · ${decision.reason}` : description));
@@ -239,9 +272,16 @@ withForm(get('accept'), async values => {
 });
 withForm(get('invite'), async values => {
   const result = await api('/invites', values);
+  if (!signedIn) return;
   get('invite-link').value = result.url;
   get('invite-result').hidden = false;
-  get('invite-link').select();
+  if (get('invite-dialog').open) get('invite-link').select();
+}, message => notify(message, get('invite-dialog').open ? 'invite-notice' : 'notice'));
+get('open-invite').addEventListener('click', () => get('invite-dialog').showModal());
+get('theme').addEventListener('click', () => {
+  const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  setTheme(theme);
+  try { localStorage.setItem('trinity-theme', theme); } catch {}
 });
 get('logout').addEventListener('click', async () => {
   try {
@@ -256,6 +296,8 @@ for (const filter of ['game', 'status']) get(filter).addEventListener('change', 
 get('previous').addEventListener('click', () => { page--; loadList(); });
 get('more').addEventListener('click', () => { page++; loadList(); });
 
+initializeTheme();
+clearDetail();
 if (inviteToken) showSignIn(true);
 else {
   try { await showWorkspace(await api('/me')); }
