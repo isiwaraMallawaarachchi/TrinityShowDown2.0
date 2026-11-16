@@ -7,9 +7,14 @@ export function deadlineTime(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-const eventTime = new Intl.DateTimeFormat('en-GB', {
-  day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Colombo',
-});
+const dateOptions = { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Colombo' };
+const eventDate = new Intl.DateTimeFormat('en-GB', dateOptions);
+const eventTime = new Intl.DateTimeFormat('en-GB', { ...dateOptions, hour: 'numeric', minute: '2-digit' });
+
+export function formatEventDate(value) {
+  const time = deadlineTime(value);
+  return time === null ? 'To be announced' : eventDate.format(time);
+}
 
 export function formatEventTime(value) {
   const time = deadlineTime(value);

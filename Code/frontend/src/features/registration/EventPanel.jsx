@@ -107,7 +107,7 @@ function RegistrationForm({ game, settings, institutions }) {
   const [accepted, setAccepted] = useState(false);
   const [sending, setSending] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [reference, setReference] = useState(null);
+  const [receipt, setReceipt] = useState(null);
   const requestId = useRef(null);
   const inFlight = useRef(false);
   const form = useRef(null);
@@ -150,7 +150,7 @@ function RegistrationForm({ game, settings, institutions }) {
       goToStep(step + 1, 'heading');
       return;
     }
-    if (!settings?.open || !accepted || inFlight.current || reference) return;
+    if (!settings?.open || !accepted || inFlight.current || receipt) return;
     const result = checkEntry(form.current, slots);
     setReview(result);
     if (!result.entry) return;
@@ -163,7 +163,7 @@ function RegistrationForm({ game, settings, institutions }) {
       data.set('requestId', requestId.current);
       data.set('formId', settings.formId);
       data.set('rulesAccepted', 'true');
-      setReference(await submitRegistration(game.id, data));
+      setReceipt(await submitRegistration(game.id, data));
     } catch (error) {
       setSubmitError(error.message);
     } finally {
@@ -174,10 +174,10 @@ function RegistrationForm({ game, settings, institutions }) {
 
   const entry = review?.entry;
   const universityName = institutions.find(university => university.id === entry?.university)?.name ?? entry?.university;
-  if (reference) return <section className="entry-receipt" aria-live="polite">
+  if (receipt) return <section className="entry-receipt" aria-live="polite">
     <h3>Registration received</h3>
-    <p>Your team is awaiting organizer review. A confirmation email has been queued.</p>
-    <p>Reference <strong>{reference}</strong></p>
+    <p>Your team is awaiting organizer review.{receipt.confirmationEmailQueued && ' A confirmation email has been queued.'}</p>
+    <p>Reference <strong>{receipt.reference}</strong></p>
   </section>;
 
   return <form ref={form} className="entry-form" noValidate onSubmit={next} autoComplete="off">
@@ -212,7 +212,7 @@ function RegistrationForm({ game, settings, institutions }) {
             <option value="" disabled>Select your university</option>
             {institutions.map(university => <option key={university.id} value={university.id}>{university.name}</option>)}
           </select>
-        </label> : <TextField label="University name" name="university" />}
+        </label> : <TextField label="University name" name="university" maxLength={120} />}
         <ImageField label="Team logo" name="teamLogo" />
         <ImageField label="Proof of payment" name="paymentProof" />
       </div>

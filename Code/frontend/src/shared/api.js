@@ -10,5 +10,5 @@ export async function submitRegistration(gameId, data) {
   if (!response.ok || !body?.reference) {
     throw new Error(body?.error ?? 'The registration service is unavailable. Retry the same submission.');
   }
-  return body.reference;
+  return body;
 }

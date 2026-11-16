@@ -10,13 +10,15 @@ const config = {
   edition: process.env.TRINITY_EDITION ?? 'trinity-showdown',
   allowedOrigins: [origin, ...(!production ? [process.env.TRINITY_DEV_ORIGIN ?? 'http://127.0.0.1:5174'] : [])],
   registrationEnabled: process.env.REGISTRATION_ENABLED === 'true',
+  acceptAnyUniversity: process.env.REGISTRATION_ANY_UNIVERSITY === 'true',
+  receiptEmailEnabled: process.env.RECEIPT_EMAIL_ENABLED !== 'false',
   proxyHops: Number(process.env.TRUST_PROXY_HOPS ?? 0),
   smtpUrl: process.env.SMTP_URL,
   receiptFrom: process.env.RECEIPT_FROM,
 };
 if (!process.env.DATABASE_URL) throw new Error('Set DATABASE_URL before starting the backend.');
 if (production && !origin.startsWith('https://')) throw new Error('Set TRINITY_ORIGIN to the public HTTPS origin.');
-if (production && config.registrationEnabled && (!config.smtpUrl || !config.receiptFrom)) {
+if (production && config.registrationEnabled && config.receiptEmailEnabled && (!config.smtpUrl || !config.receiptFrom)) {
   throw new Error('Configure receipt email before opening production registration.');
 }
 

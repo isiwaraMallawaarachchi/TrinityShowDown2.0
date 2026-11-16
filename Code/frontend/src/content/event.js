@@ -48,7 +48,7 @@ export const games = [
 export const event = {
   date: 'To be announced',
   venue: 'To be announced',
-  registration: 'Opening date to be announced',
+  registrationOpensAt: '2026-11-16T00:00:00+05:30',
   registrationClosesAt: '2026-12-06T23:59:00+05:30',
   milestones: [
     { id: 'registration-opens', title: 'Registration opens', description: 'Choose a game and prepare your team entry.' },

@@ -47,7 +47,9 @@ try {
   if (Boolean(open) !== Boolean(close) || (open && Date.parse(open) >= Date.parse(close))) {
     throw new Error('Provide both registration dates in order, or leave both blank to keep registration closed.');
   }
-  if (games.length && !input.institutions.length) throw new Error('Provide the approved institution names.');
+  if (games.length && !input.institutions.length && process.env.REGISTRATION_ANY_UNIVERSITY !== 'true') {
+    throw new Error('Provide approved institution names or set REGISTRATION_ANY_UNIVERSITY=true.');
+  }
   if (new Set(games.map(game => game.game)).size !== games.length) throw new Error('List each game only once.');
   await transaction(db, async client => {
     const { rows: [{ id: edition }] } = await client.query(`
