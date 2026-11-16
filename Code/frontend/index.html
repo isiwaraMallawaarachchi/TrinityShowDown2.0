@@ -3,18 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#e8f5e9" />
-    <script>
-      (() => {
-        let theme;
-        try { theme = localStorage.getItem('trinity-theme'); } catch {}
-        if (theme !== 'light' && theme !== 'dark') {
-          theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-        document.documentElement.dataset.theme = theme;
-        if (theme === 'dark') document.querySelector('meta[name="theme-color"]').content = '#092328';
-      })();
-    </script>
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#092328" />
     <link rel="icon" type="image/svg+xml" href="/art/trinity.svg" />
     <meta name="description" content="Explore the four games at Trinity Showdown and find tournament and team registration information." />
     <title>Trinity Showdown | Mobile Esports</title>

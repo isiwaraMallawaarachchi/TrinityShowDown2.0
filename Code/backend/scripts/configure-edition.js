@@ -1,7 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { trinityBankInstructions } from '../../shared/registration-rules.mjs';
 import { createDatabase, transaction } from '../src/database.js';
 import { text } from '../src/http.js';
+import { bundledRulebook } from '../src/rulebooks.js';
 
 const path = process.argv[2];
 if (!path || !process.env.DATABASE_URL) throw new Error('Set DATABASE_URL to the maintenance connection and pass an edition JSON file.');
@@ -19,19 +21,23 @@ function date(value, label) {
 }
 
 async function preparedGame(game) {
-  const { formVersion, starters, substitutes, fee, rulebookVersion, rulebookFile, bankInstructions } = game;
+  const { formVersion, starters, substitutes, fee, rulebookFile } = game;
+  const bankInstructions = game.bankInstructions ?? (slug === 'trinity-showdown' ? trinityBankInstructions : null);
   if (!Number.isSafeInteger(formVersion) || formVersion < 1 ||
     !Number.isInteger(starters) || starters < 2 || starters > 5 ||
     !Number.isInteger(substitutes) || substitutes < 0 || substitutes > 2 ||
     !/^[1-9]\d{0,9}(?:\.\d{1,2})?$/.test(String(fee))) {
-    throw new Error(`Check formVersion, roster limits and the fee for ${game.game}.`);
+    throw new Error(`Check formVersion, team size limits and the fee for ${game.game}.`);
   }
-  const pdf = await readFile(resolve(dirname(path), rulebookFile));
+  const rulebookVersion = text(game.rulebookVersion, 'Rulebook version', 80);
+  const bundled = rulebookFile == null ? bundledRulebook(slug, game.game, rulebookVersion) : null;
+  if (!bundled && !rulebookFile) throw new Error(`Provide a rulebookFile for ${game.game} version ${rulebookVersion}.`);
+  const pdf = await readFile(bundled?.path ?? resolve(dirname(path), rulebookFile));
   if (pdf.length > 10 * 1024 * 1024 || pdf.toString('ascii', 0, 5) !== '%PDF-') {
     throw new Error(`Provide a PDF rulebook under 10 MB for ${game.game}.`);
   }
-  return { ...game, rulebookVersion: text(rulebookVersion, 'Rulebook version', 80),
-    bankInstructions: text(bankInstructions, 'Bank instructions', 4000), pdf };
+  return { ...game, rulebookVersion, bankInstructions: text(bankInstructions, 'Bank instructions', 4000),
+    rulebookKey: bundled?.key ?? `rulebooks/${slug}/${game.game}/${formVersion}`, pdf: bundled ? null : pdf };
 }
 
 try {
@@ -70,8 +76,7 @@ try {
         SELECT $1::uuid, id, $2::smallint, $3::timestamptz, $4::timestamptz FROM trinity.games WHERE slug = $5
         ON CONFLICT (edition_id, game_id) DO UPDATE SET registration_opens_at = EXCLUDED.registration_opens_at,
         registration_closes_at = EXCLUDED.registration_closes_at RETURNING id`, [edition, index + 1, open, close, game.game]);
-      const key = `rulebooks/${slug}/${game.game}/${game.formVersion}`;
-      const parameters = [editionGame, game.formVersion, privacy.id, game.rulebookVersion, key,
+      const parameters = [editionGame, game.formVersion, privacy.id, game.rulebookVersion, game.rulebookKey,
         game.fee, game.bankInstructions, game.starters, game.substitutes];
       await client.query(`
         INSERT INTO trinity.registration_forms(edition_game_id, version, privacy_notice_id, rulebook_version,
@@ -83,10 +88,13 @@ try {
         AND rulebook_key = $5 AND fee_lkr = $6 AND bank_instructions = $7 AND min_starters = $8 AND max_starters = $8
         AND min_substitutes = 0 AND max_substitutes = $9 AND field_definitions = '{}'::jsonb`, parameters);
       if (!form) throw new Error(`The ${game.game} form changed. Use a new formVersion.`);
-      await client.query(`INSERT INTO trinity.media(key, content_type, bytes) VALUES ($1, 'application/pdf', $2)
-        ON CONFLICT (key) DO NOTHING`, [key, game.pdf]);
-      const { rows: [file] } = await client.query('SELECT bytes = $2 AS matches FROM trinity.media WHERE key = $1', [key, game.pdf]);
-      if (!file.matches) throw new Error(`The ${game.game} rulebook changed. Use a new formVersion and rulebookVersion.`);
+      if (game.pdf) {
+        const fileParams = [game.rulebookKey, game.pdf];
+        await client.query(`INSERT INTO trinity.media(key, content_type, bytes) VALUES ($1, 'application/pdf', $2)
+          ON CONFLICT (key) DO NOTHING`, fileParams);
+        const { rows: [file] } = await client.query('SELECT bytes = $2 AS matches FROM trinity.media WHERE key = $1', fileParams);
+        if (!file.matches) throw new Error(`The ${game.game} rulebook changed. Use a new formVersion and rulebookVersion.`);
+      }
       await client.query('UPDATE trinity.edition_games SET active_form_id = $2 WHERE id = $1', [editionGame, form.id]);
     }
   });

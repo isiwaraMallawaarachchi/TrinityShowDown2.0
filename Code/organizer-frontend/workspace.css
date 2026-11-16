@@ -11,30 +11,6 @@
 }
 
 :root {
-  color-scheme: light;
-  --paper: #e8f5e9;
-  --canvas: #f3faf3;
-  --panel: #fbfefa;
-  --tint: #edf6eb;
-  --selected: #dcefdc;
-  --line: #c6ddc5;
-  --control-line: #8bab8c;
-  --ink: #143b1b;
-  --muted: #466649;
-  --accent: #1b5e20;
-  --on-accent: #f2faf2;
-  --glow: #bedfbb;
-  --danger: #852b3a;
-  --danger-bg: #fce8ec;
-  --pending: #6c4b19;
-  --pending-bg: #f8efd9;
-  --shadow: 0 14px 48px #123b2312;
-  --display: Marcellus, Georgia, serif;
-  font: 16px/1.5 Mulish, system-ui, sans-serif;
-  color: var(--ink);
-  background: radial-gradient(ellipse at top left, var(--glow), transparent 44rem), var(--paper);
-}
-[data-theme="dark"] {
   color-scheme: dark;
   --paper: #092328;
   --canvas: #0b292d;
@@ -53,6 +29,10 @@
   --pending: #f7db9c;
   --pending-bg: #423820;
   --shadow: 0 14px 48px #0003;
+  --display: Marcellus, Georgia, serif;
+  font: 16px/1.5 Mulish, system-ui, sans-serif;
+  color: var(--ink);
+  background: radial-gradient(ellipse at top left, var(--glow), transparent 44rem), var(--paper);
 }
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100vh; }
@@ -124,14 +104,12 @@ label { font-size: .88rem; font-weight: 750; min-width: 0; }
   border-radius: 1rem;
   background: var(--panel);
 }
-.brand, .topbar-actions, .account-tools { display: flex; align-items: center; gap: .65rem; min-width: 0; }
+.brand, .account-tools { display: flex; align-items: center; gap: .65rem; min-width: 0; }
 .brand { font: 400 clamp(1rem, 2vw, 1.32rem)/1.1 var(--display); }
 .brand img { width: 3.6rem; height: 2.65rem; padding: .35rem; object-fit: contain; border-radius: .7rem; background: #092328; }
 .site-link { background: var(--panel); }
-.topbar-actions { justify-content: flex-end; flex-wrap: wrap; }
 .account-tools { flex-wrap: wrap; justify-content: flex-end; }
 #account { max-width: 10rem; overflow-wrap: anywhere; color: var(--muted); font-size: .86rem; font-weight: 750; }
-#theme[aria-pressed="true"] { background: var(--selected); }
 
 .auth {
   display: grid;
@@ -288,7 +266,7 @@ label { font-size: .88rem; font-weight: 750; min-width: 0; }
 @media (max-width: 760px) {
   .shell { width: calc(100% - 1rem); margin: .5rem auto; }
   .topbar { grid-template-columns: minmax(0, 1fr) auto; }
-  .topbar-actions { grid-column: 1 / -1; justify-content: space-between; }
+  .account-tools { grid-column: 1 / -1; }
   .auth, .workspace-grid { grid-template-columns: 1fr; }
   .auth-art { min-height: 11rem; background-image: linear-gradient(180deg, #09232805 30%, #092328df 94%), url("/art/emerald-squad-mobile.webp"); }
   .auth-art img { width: min(78%, 13rem); }

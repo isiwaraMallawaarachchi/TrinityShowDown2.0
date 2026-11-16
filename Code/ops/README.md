@@ -30,3 +30,5 @@ The [workflow](../../.github/workflows/deploy.yml) checks pull requests. When `A
 4. In GitHub Actions settings, add the private key as `AZURE_DEPLOY_KEY` and the verified VM host key line as `AZURE_SSH_KNOWN_HOSTS`. Set the repository variable `AZURE_DEPLOY_ENABLED` to `true`.
 
 Check **Deploy to Azure** in the Actions run. The release script restores the previous release if the health check fails. Apply new database migrations separately.
+
+For an existing database, back it up and apply [migration 003](../database/migrations/003_team_players.sql) with the database owner as part of deploying the release that uses `trinity.team_players`. Schedule the migration and release together during maintenance so the previous backend stops serving requests before the table names change. Rolling back to a release that uses the previous database names also requires restoring a compatible database.

@@ -10,7 +10,7 @@ import { useMediaVariant } from '../features/journey/SceneVideo.jsx';
 import { useSceneJourney } from '../features/journey/useSceneJourney.js';
 import { fetchEvent } from '../shared/api.js';
 import WorldChapter from '../features/journey/WorldChapter.jsx';
-import { NavigationMenu, ThemeToggle } from './SiteNavigation.jsx';
+import { NavigationMenu } from './SiteNavigation.jsx';
 import '../styles/site.css';
 import '../styles/motion.css';
 
@@ -32,7 +32,6 @@ export default function App() {
   const [panel, setPanel] = useState(null);
   const [selectedGame, setSelectedGame] = useState(games[0].id);
   const [eventData, setEventData] = useState(null);
-  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme);
   const world = useRef(null);
   const guide = useRef(null);
   const header = useRef(null);
@@ -109,14 +108,6 @@ export default function App() {
     if (portalGames.has(location.hash.slice(1))) history.replaceState(null, '', '#register');
   }
 
-  function toggleTheme() {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = next;
-    document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
-    try { localStorage.setItem('trinity-theme', next); } catch {}
-    setTheme(next);
-  }
-
   const next = chapters[active + 1]?.id ?? 'prize-pool';
   const gameWindows = Object.values(eventData?.games ?? {}).filter(settings => settings.opensAt && settings.closesAt);
   const sharedDate = key => {
@@ -129,7 +120,6 @@ export default function App() {
     startsAt: eventData?.edition?.startsAt,
   };
   const headerExpanded = active > 0 || inGuide;
-  const themeControl = <ThemeToggle dark={theme === 'dark'} onToggle={toggleTheme} />;
   const worldClasses = 'world-stage' + (touchJourney ? ' is-touch-journey' : '') +
     (!touchJourney && inGuide ? ' is-behind-guide' : '');
   const chapterAnchor = (chapter, index, children) => <div key={chapter.id}
@@ -139,12 +129,9 @@ export default function App() {
     <a className="skip-link" href={inGuide ? '#prize-pool' : '#chapter-content'}>Skip to content</a>
     <header ref={header} className={'site-header' + (inGuide ? ' is-editorial' : '') + (touchJourney ? ' is-touch-header' : '')}>
       <div className="nav-wing nav-wing-left">
-        <div className="nav-actions">
-          <button className="menu-toggle" onClick={() => setMenu(true)} aria-haspopup="dialog" aria-expanded={menu} aria-label="Open navigation menu">
-            <span className="menu-glyph" aria-hidden="true"><i /><i /><i /></span>Menu
-          </button>
-          {themeControl}
-        </div>
+        <button className="menu-toggle" onClick={() => setMenu(true)} aria-haspopup="dialog" aria-expanded={menu} aria-label="Open navigation menu">
+          <span className="menu-glyph" aria-hidden="true"><i /><i /><i /></span>Menu
+        </button>
       </div>
       <a className="header-brand" href="#home" onClick={(e) => route(e, 'home')} inert={!headerExpanded} aria-label="Trinity Showdown home">
         <img src={frostedLogo} alt="" width="960" height="454" />
@@ -187,9 +174,9 @@ export default function App() {
         <i aria-hidden="true" />
       </a>
     </>}
-    <NavigationMenu open={menu} onClose={() => setMenu(false)} navigate={navigate} themeControl={themeControl} links={links} logo={frostedLogo} />
+    <NavigationMenu open={menu} onClose={() => setMenu(false)} navigate={navigate} links={links} logo={frostedLogo} />
     <RegistrationPortal game={panel} settings={eventData?.games?.[panel?.id]} institutions={eventData?.institutions}
-      onClose={closePortal} themeControl={themeControl} />
+      onClose={closePortal} />
     <PointerReticle enabled={!inGuide && !reduced && !isModalOpen} />
   </>;
 }

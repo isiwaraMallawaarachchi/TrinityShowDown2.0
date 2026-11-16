@@ -1,4 +1,6 @@
-export const rosterRules = {
+import { parseTownHallLevel } from '../../../../shared/registration-rules.mjs';
+
+export const teamRules = {
   'cod-mobile': { starters: 5, substitutes: 1 },
   'pubg-mobile': { starters: 4, substitutes: 2 },
   mlbb: { starters: 5, substitutes: 2 },
@@ -7,7 +9,19 @@ export const rosterRules = {
 
 export const registrationId = (gameId) => 'register-' + gameId;
 
-export function rosterSlots({ starters, substitutes }) {
+const feeAmount = 250;
+export const perPersonFee = {
+  amount: feeAmount,
+  label: `Rs. ${feeAmount} per person`,
+  games: ['cod-mobile', 'pubg-mobile', 'mlbb'],
+};
+
+export function registrationFeeLabel(gameId, publishedFee) {
+  if (perPersonFee.games.includes(gameId)) return perPersonFee.label;
+  return publishedFee ? 'LKR ' + publishedFee : 'To be announced';
+}
+
+export function playerSlots({ starters, substitutes }) {
   return [
     { id: 'leader', label: 'Team leader', phone: true, leader: true },
     ...Array.from({ length: starters - 1 }, (_, index) => ({
@@ -19,7 +33,7 @@ export function rosterSlots({ starters, substitutes }) {
   ];
 }
 
-export function rosterSummary(gameId, rules = rosterRules[gameId]) {
+export function teamSizeSummary(gameId, rules = teamRules[gameId]) {
   const { starters, substitutes } = rules;
   return starters + ' starters · Up to ' + substitutes + ' ' + (substitutes === 1 ? 'substitute' : 'substitutes');
 }
@@ -39,7 +53,8 @@ export function reviewRegistration(data, slots) {
       };
     }
     studentIds.set(studentId, slot.label);
-    players.push({ id: slot.id, role: slot.label, name: name.trim(), gameName: data.get(slot.id + '.gameName').trim() });
+    players.push({ id: slot.id, role: slot.label, name: name.trim(), gameName: data.get(slot.id + '.gameName').trim(),
+      townHallLevel: parseTownHallLevel(data.get(slot.id + '.townHallLevel')) });
   }
   return {
     team: data.get('teamName').trim(),

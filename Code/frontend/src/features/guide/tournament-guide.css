@@ -321,10 +321,14 @@
 .game-details-copy .eyebrow { color: var(--accent); margin: 0 0 5px; }
 .game-details-copy h3 { font-size: clamp(25px, 3vw, 38px); margin: 0 0 8px; line-height: 1.12; }
 .game-details-copy > p:not(.eyebrow) { font-size: 14px; color: var(--muted); margin: 0 0 11px; line-height: 1.5; }
-.game-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
-.game-facts div { border-top: 1px solid var(--rule); padding: 7px 0; }
+.game-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 15px 0 10px; }
+.game-facts > div { min-width: 0; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); }
+.game-fact-format { grid-column: 1 / -1; }
 .game-facts dt, .registration-facts dt { font-size: 10px; letter-spacing: .11em; text-transform: uppercase; font-weight: 750; }
-.game-facts dd { margin-top: 3px; color: var(--muted); font-size: 13px; line-height: 1.4; }
+.game-facts dt { color: var(--muted); }
+.game-facts dd { margin-top: 4px; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+.game-facts > .game-fact-fee { background: var(--surface-tint); }
+.game-fact-fee dd { color: var(--accent); font-weight: 750; }
 .guide-link { display: inline-flex; align-items: center; gap: 8px; color: var(--accent); border-bottom: 1px solid var(--control-line); font-size: 13px; font-weight: 750; padding-block: 6px; }
 .guide-link:hover { color: var(--accent-hover); border-color: currentColor; }
 .game-details-copy .guide-link { margin-top: 5px; }
@@ -370,13 +374,13 @@
 .team-sample-emblem {
   display: grid; place-items: center; width: 100%; height: 100%;
   border-radius: 32%;
-  background: linear-gradient(150deg, var(--sample-emblem-light, var(--palette-mid)), var(--scene-depth));
+  background: linear-gradient(150deg, var(--sample-emblem-accent, var(--palette-mid)), var(--scene-depth));
   color: var(--ivory);
   font: 400 clamp(15px, 2vw, 23px)/1 var(--display);
   letter-spacing: .05em;
 }
-.team-tiles li:nth-child(3n + 2) { --sample-emblem-light: var(--palette-deep); }
-.team-tiles li:nth-child(3n + 3) { --sample-emblem-light: color-mix(in srgb, var(--palette-soft), var(--scene-depth) 50%); }
+.team-tiles li:nth-child(3n + 2) { --sample-emblem-accent: var(--palette-deep); }
+.team-tiles li:nth-child(3n + 3) { --sample-emblem-accent: color-mix(in srgb, var(--palette-soft), var(--scene-depth) 50%); }
 .team-tiles h4 { margin: 10px 0 0; font-size: clamp(14px, 1.65vw, 18px); line-height: 1.2; overflow-wrap: anywhere; }
 .rules-columns, .contact-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(19px,4vw,48px); }
 .rules-columns article, .contact-columns article { padding: 19px 0; border-top: 1px solid var(--rule); }
@@ -510,7 +514,7 @@ a.rulebook-card:is(:hover, :focus-visible) .rulebook-icon {
   list-style: none;
 }
 .contact-columns .host-mark { flex-direction: column; gap: 7px; padding: 12px 15px; border-radius: 8px; text-align: center; }
-.contact-columns .host-mark img { width: min(100%, 224px); height: clamp(48px, 7vw, 68px); object-fit: contain; }
+.contact-columns .host-mark img { width: min(100%, 260px); height: clamp(56px, 8vw, 80px); object-fit: contain; }
 .contact-list .contact-role { margin-bottom: 4px; color: var(--accent); font-size: 11px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
 .contact-list li { display: grid; justify-items: start; padding: 12px 15px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface-tint); }
 .contact-list .contact-name { font: 400 clamp(19px, 2.5vw, 25px)/1.2 var(--display); color: var(--ink); margin-bottom: 5px; }

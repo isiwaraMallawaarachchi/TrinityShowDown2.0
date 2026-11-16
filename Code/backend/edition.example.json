@@ -14,11 +14,9 @@
       "game": "cod-mobile",
       "formVersion": 1,
       "rulebookVersion": "1",
-      "rulebookFile": "rulebooks/cod-mobile.pdf",
       "starters": 5,
       "substitutes": 1,
-      "fee": "1000.00",
-      "bankInstructions": "Add the approved bank transfer instructions."
+      "fee": "1000.00"
     }
   ]
 }

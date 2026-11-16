@@ -3,13 +3,15 @@ import { Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import multer from 'multer';
 import sharp from 'sharp';
+import { parseTownHallLevel, requiresTownHallLevel } from '../../shared/registration-rules.mjs';
 import { transaction } from './database.js';
 import { email, HttpError, isUuid, sendMedia, text } from './http.js';
+import { bundledRulebook, bundledRulebookSettings } from './rulebooks.js';
 
 const FORM_SELECT = `
   SELECT eg.id AS edition_game_id, g.slug, eg.registration_opens_at, eg.registration_closes_at,
          f.id AS form_id, f.min_starters, f.max_starters, f.min_substitutes, f.max_substitutes,
-         f.fee_lkr, f.bank_instructions, f.rulebook_version, f.field_definitions, n.version AS privacy_version,
+         f.fee_lkr, f.bank_instructions, f.rulebook_version, f.rulebook_key, f.field_definitions, n.version AS privacy_version,
          EXISTS (SELECT 1 FROM trinity.media m WHERE m.key = f.rulebook_key AND m.registration_id IS NULL) AS has_rulebook,
          clock_timestamp() >= eg.registration_opens_at AND clock_timestamp() < eg.registration_closes_at AS in_window
     FROM trinity.edition_games eg JOIN trinity.editions e ON e.id = eg.edition_id
@@ -22,8 +24,9 @@ const supported = form => form?.form_id && form.min_starters === form.max_starte
   form.max_starters >= 2 && form.max_starters <= 5 && form.min_substitutes === 0 && form.max_substitutes <= 2 &&
   Object.keys(form.field_definitions).length === 0;
 const mediaTypes = { jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+const maxTextFields = 6 + 2 + 7 * 5; // Team fields, phone numbers and up to seven players with Town Hall levels.
 const upload = multer({
-  limits: { fileSize: 5 * 1024 * 1024, files: 17, fields: 37, fieldSize: 512, fieldNameSize: 42, fieldNestingDepth: 0 },
+  limits: { fileSize: 5 * 1024 * 1024, files: 17, fields: maxTextFields, fieldSize: 512, fieldNameSize: 42, fieldNestingDepth: 0 },
 }).any();
 
 function slots(form, values) {
@@ -77,6 +80,7 @@ async function registrationPayload(values, files, form) {
   const captainEmail = email(values['leader.email']);
   const uploadFields = new Set();
   const textFields = new Set(['requestId', 'formId', 'university', 'teamName', 'rulesAccepted', 'leader.email']);
+  const needsTownHallLevel = requiresTownHallLevel(form.slug);
   const byField = new Map();
   for (const file of files) {
     if (byField.has(file.fieldname)) throw new HttpError(400, 'Attach only one image per field.');
@@ -89,7 +93,7 @@ async function registrationPayload(values, files, form) {
     media.push(...records);
     return records.map(record => record.key);
   }
-  const roster = [];
+  const players = [];
   const studentIds = new Set();
   for (const { id, role, leader, phone: needsPhone } of slots(form, values)) {
     function field(name, label, max) {
@@ -99,7 +103,7 @@ async function registrationPayload(values, files, form) {
     }
     const studentNumber = field('studentId', `${id} university ID`, 64);
     const normalized = studentNumber.toLowerCase();
-    if (studentIds.has(normalized)) throw new HttpError(409, 'A player appears more than once on this roster.');
+    if (studentIds.has(normalized)) throw new HttpError(409, 'A player appears more than once on this team.');
     studentIds.add(normalized);
     const member = {
       full_name: field('name', `${id} full name`, 120), institution_id: university,
@@ -108,10 +112,19 @@ async function registrationPayload(values, files, form) {
       extra_fields: { gameName: field('gameName', `${id} in-game name`, 80) },
     };
     if (needsPhone) member.extra_fields.phone = phone(field('phone', `${id} contact number`, 25), `${id} contact number`);
+    if (needsTownHallLevel) {
+      const key = `${id}.townHallLevel`;
+      const level = parseTownHallLevel(values[key]);
+      if (level === null) {
+        throw new HttpError(400, 'Enter a whole Town Hall level of 1 or higher for every Clash of Clans player.');
+      }
+      textFields.add(key);
+      member.extra_fields.townHallLevel = level;
+    }
     [member.extra_fields.idFront] = await attachment(`${id}.idFront`);
     [member.extra_fields.idBack] = await attachment(`${id}.idBack`);
     if (leader) [member.extra_fields.portrait] = await attachment(`${id}.portrait`);
-    roster.push(member);
+    players.push(member);
   }
   const [logo, display] = await attachment('teamLogo', true);
   const [proof] = await attachment('paymentProof');
@@ -120,10 +133,21 @@ async function registrationPayload(values, files, form) {
   }
   return { media, payload: {
     edition_game_id: form.edition_game_id, form_id: form.form_id, rules_accepted: true,
-    team_name: team, captain_name: roster[0].full_name, captain_email: captainEmail,
-    captain_phone: roster[0].extra_fields.phone, logo_key: logo, display_logo_key: display,
-    payment_proof_key: proof, roster,
+    team_name: team, captain_name: players[0].full_name, captain_email: captainEmail,
+    captain_phone: players[0].extra_fields.phone, logo_key: logo, display_logo_key: display,
+    payment_proof_key: proof, players,
   } };
+}
+
+function formRulebook(edition, form) {
+  const file = bundledRulebook(edition, form.slug, form.rulebook_version);
+  return file?.key === form.rulebook_key ? file : null;
+}
+
+function downloadRulebook(res, next, file) {
+  res.download(file.path, file.name, error => {
+    if (error) next(error.code === 'ENOENT' ? new HttpError(404, 'Rulebook unavailable.') : error);
+  });
 }
 
 export function publicRoutes(db, config) {
@@ -138,31 +162,50 @@ export function publicRoutes(db, config) {
       db.query(`SELECT t.id, t.game_slug AS "gameId", t.team_name AS name FROM trinity.public_teams t
         JOIN trinity.editions e ON e.id = t.edition_id WHERE e.slug = $1 ORDER BY t.team_name`, [config.edition]),
     ]);
+    const games = bundledRulebookSettings(config.edition);
+    for (const form of forms.rows) {
+      const hasRulebook = form.has_rulebook || formRulebook(config.edition, form);
+      const rulebook = form.form_id ? {
+        rulebookUrl: hasRulebook ? `/api/public/rulebooks/${form.form_id}` : null,
+        rulebookVersion: form.rulebook_version,
+      } : games.get(form.slug);
+      games.set(form.slug, {
+        open: Boolean(config.registrationEnabled && form.in_window && hasRulebook && supported(form) && institutions.rows.length),
+        opensAt: form.registration_opens_at, closesAt: form.registration_closes_at,
+        formId: form.form_id, starters: supported(form) ? form.max_starters : null, substitutes: supported(form) ? form.max_substitutes : null,
+        fee: form.fee_lkr, bankInstructions: form.bank_instructions,
+        rulebookUrl: rulebook?.rulebookUrl ?? null, rulebookVersion: rulebook?.rulebookVersion ?? null,
+        privacyVersion: form.privacy_version,
+        privacyUrl: form.form_id ? `/api/public/privacy/${form.form_id}` : null,
+      });
+    }
     res.json({
       edition: edition.rows[0] ?? null,
       institutions: institutions.rows,
       teams: teams.rows.map(team => ({ ...team, logoUrl: `/api/public/teams/${team.id}/logo` })),
-      games: Object.fromEntries(forms.rows.map(form => [form.slug, {
-        open: Boolean(config.registrationEnabled && form.in_window && form.has_rulebook && supported(form) && institutions.rows.length),
-        opensAt: form.registration_opens_at, closesAt: form.registration_closes_at,
-        formId: form.form_id, starters: supported(form) ? form.max_starters : null, substitutes: supported(form) ? form.max_substitutes : null,
-        fee: form.fee_lkr, bankInstructions: form.bank_instructions,
-        rulebookUrl: form.has_rulebook ? `/api/public/rulebooks/${form.form_id}` : null,
-        rulebookVersion: form.rulebook_version, privacyVersion: form.privacy_version,
-        privacyUrl: form.form_id ? `/api/public/privacy/${form.form_id}` : null,
-      }])),
+      games: Object.fromEntries(games),
     });
   });
 
-  router.get('/rulebooks/:id', async (req, res) => {
+  router.get('/rulebooks/files/:game/:version', (req, res, next) => {
+    const file = bundledRulebook(config.edition, req.params.game, req.params.version);
+    if (!file) throw new HttpError(404, 'Rulebook unavailable.');
+    downloadRulebook(res, next, file);
+  });
+
+  router.get('/rulebooks/:id', async (req, res, next) => {
     if (!isUuid(req.params.id)) throw new HttpError(404, 'File unavailable.');
-    const { rows: [file] } = await db.query(`
-      SELECT m.content_type, m.bytes FROM trinity.registration_forms f
+    const { rows: [form] } = await db.query(`
+      SELECT g.slug, f.rulebook_key, f.rulebook_version, m.content_type, m.bytes FROM trinity.registration_forms f
       JOIN trinity.edition_games eg ON eg.id = f.edition_game_id JOIN trinity.editions e ON e.id = eg.edition_id
-      JOIN trinity.media m ON m.key = f.rulebook_key AND m.registration_id IS NULL
+      JOIN trinity.games g ON g.id = eg.game_id
+      LEFT JOIN trinity.media m ON m.key = f.rulebook_key AND m.registration_id IS NULL
       WHERE f.id = $1 AND e.slug = $2`, [req.params.id, config.edition]);
-    if (file) res.attachment('trinity-rulebook.pdf');
-    sendMedia(res, file);
+    if (!form) throw new HttpError(404, 'Rulebook unavailable.');
+    const file = formRulebook(config.edition, form);
+    if (file) return downloadRulebook(res, next, file);
+    if (form.bytes) res.attachment(`${form.slug}-rulebook.pdf`);
+    sendMedia(res, form.bytes ? form : null);
   });
 
   router.get('/privacy/:id', async (req, res) => {
@@ -201,7 +244,9 @@ export function publicRoutes(db, config) {
       const { rows: [form] } = await db.query(`${FORM_SELECT}
         JOIN trinity.registration_forms f ON f.edition_game_id = eg.id ${FORM_NOTICE}
         WHERE e.slug = $1 AND g.slug = $2 AND f.id = $3 AND ${FORM_SUPPORTED}`, [config.edition, req.params.game, values.formId]);
-      if (!supported(form) || !form.has_rulebook) throw new HttpError(409, 'This registration form is unavailable. Reopen registration for the current form.');
+      if (!supported(form) || !(form.has_rulebook || formRulebook(config.edition, form))) {
+        throw new HttpError(409, 'This registration form is unavailable. Reopen registration for the current form.');
+      }
       const { rowCount: institutionCount, rows } = await db.query('SELECT id FROM trinity.institutions WHERE id = $1', [values.university]);
       if (!(institutionCount ?? rows.length)) throw new HttpError(400, 'Select a university from the list.');
       const { media, payload } = await registrationPayload(values, req.files ?? [], form);

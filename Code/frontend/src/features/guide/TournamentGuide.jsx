@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { coChairs, event, games, previewTeams } from '../../content/event.js';
+import { contacts, event, games, previewTeams } from '../../content/event.js';
 import { countdownAt, deadlineTime, formatEventTime, millisecondsPerMinute } from '../../shared/countdown.js';
-import { registrationId, rosterRules, rosterSummary } from '../registration/registration.js';
+import { perPersonFee, registrationFeeLabel, registrationId, teamRules, teamSizeSummary } from '../registration/registration.js';
+import DownloadIcon from '../../shared/DownloadIcon.jsx';
 import GameArtwork from '../../shared/GameArtwork.jsx';
 import { AmbientField } from '../../shared/motion.jsx';
 import './tournament-guide.css';
@@ -35,6 +36,19 @@ const socialLinks = [
     name: 'YouTube',
     href: 'https://www.youtube.com/user/rotaractmora',
     icon: <path fillRule="evenodd" d="M6 5h12a4 4 0 0 1 4 4v6a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4Zm4 3.6v6.8l5.8-3.4Z" />,
+  },
+  {
+    name: 'TikTok',
+    href: 'https://rotaract.social/trinity-showdown_tiktok',
+    icon: <path d="M13.2 2.5h3.2c.3 2.6 1.9 4.3 4.6 4.5v3.2a8 8 0 0 1-4.6-1.5v7a5.9 5.9 0 1 1-5.9-5.9c.3 0 .6 0 .9.1v3.3a2.7 2.7 0 1 0 1.8 2.5Z" />,
+  },
+  {
+    name: 'WhatsApp Channel',
+    href: 'https://rotaract.social/trinity-showdown_whatsapp-channel',
+    icon: <>
+      <path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <path d="M8.5 7.2c-.7 0-1.5 1-1.5 2.1 0 2.5 3.4 6 6.5 6.9 1.4.4 2.6-.2 3.1-1.1.2-.4.4-1 .1-1.2l-2.1-1.1c-.3-.2-.6-.1-.8.2l-.8 1c-1.5-.6-2.7-1.7-3.3-3l.7-.8c.2-.2.3-.5.1-.8l-.9-1.9c-.2-.3-.5-.3-1.1-.3Z" />
+    </>,
   },
 ];
 
@@ -236,17 +250,32 @@ function GamePanel({ game, settings, active, onNavigate }) {
       <div className="game-details-copy">
         <p className="eyebrow">{game.genre}</p><h3>{game.name}</h3><p>{game.teaser}</p>
         <dl className="game-facts">
-          {[
-            ['Match format', game.format], ['Team size', settings?.starters ? rosterSummary(game.id, settings) :
-              (rosterRules[game.id].provisional ? 'Provisional · ' : '') + rosterSummary(game.id)],
-            ['Match duration', game.duration], ['Prize pool', game.prizePool],
-            ['Schedule', game.schedule], ['Entry fee', settings?.fee ? 'LKR ' + settings.fee : game.entryFee ?? event.entryFee],
-          ].map(([label, value]) =>
-            <div key={label}><dt>{label}</dt><dd>{value ?? 'To be announced'}</dd></div>)}
+          <div>
+            <dt>Team size</dt>
+            <dd>{settings?.starters ? teamSizeSummary(game.id, settings) :
+              (teamRules[game.id].provisional ? 'Provisional · ' : '') + teamSizeSummary(game.id)}</dd>
+          </div>
+          <div>
+            <dt>Team slots</dt>
+            <dd>{game.teamSlots}</dd>
+          </div>
+          <div>
+            <dt>Prize pool</dt>
+            <dd>{game.prizePool ?? 'To be announced'}</dd>
+          </div>
+          <div className="game-fact-fee">
+            <dt>Registration fee</dt>
+            <dd>{registrationFeeLabel(game.id, settings?.fee)}</dd>
+          </div>
+          {game.format && <div className="game-fact-format">
+            <dt>Tournament format</dt>
+            <dd>{game.format}</dd>
+          </div>}
         </dl>
         <div className="game-details-links">
           <a className="guide-link" href="#rules" onClick={(e) => { e.preventDefault(); onNavigate('rules'); }}>Read the rules <span aria-hidden="true">↗</span></a>
-          <a className="guide-link" href="#rulebooks" onClick={(e) => { e.preventDefault(); onNavigate('rulebooks'); }}>Game rulebooks <span aria-hidden="true">↗</span></a>
+          {settings?.rulebookUrl ? <a className="guide-link" href={settings.rulebookUrl} download>Download rulebook (PDF)</a> :
+            <a className="guide-link" href="#rulebooks" onClick={(e) => { e.preventDefault(); onNavigate('rulebooks'); }}>Game rulebooks <span aria-hidden="true">↗</span></a>}
           <a className="guide-link" href={'#' + registrationId(game.id)} onClick={(e) => { e.preventDefault(); onNavigate(registrationId(game.id)); }}>Register now <span aria-hidden="true">↗</span></a>
         </div>
       </div>
@@ -367,13 +396,6 @@ function Rules() {
   </section>;
 }
 
-function DownloadIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path className="rulebook-icon-arrow" d="M12 3v12m-5-5 5 5 5-5" />
-    <path d="M4 16v4h16v-4" />
-  </svg>;
-}
-
 function Rulebooks({ gameSettings }) {
   return <section className="guide-section guide-rulebooks" id="rulebooks" tabIndex={-1} aria-labelledby="rulebooks-title">
     <SectionHeading id="rulebooks-title" title="Game rulebooks" />
@@ -396,17 +418,16 @@ function Rulebooks({ gameSettings }) {
   </section>;
 }
 
-function Registration({ onNavigate, deadline, gameSettings }) {
+function Registration({ onNavigate, deadline }) {
   return <section className="registration-section" id="register" tabIndex={-1} aria-labelledby="register-title">
     <div className="registration-inner">
-      <SectionHeading id="register-title" title="Register your team" />
+      <SectionHeading id="register-title" title="Register your team"
+        description="The team leader must complete the registration form and upload proof of payment." />
       <RegistrationClock deadline={deadline} />
       <dl className="registration-facts">
         <div><dt>Deadline</dt><dd>{formatEventTime(deadline)}</dd></div>
         <div><dt>Team size</dt><dd><a href="#games" onClick={(e) => { e.preventDefault(); onNavigate('games'); }}>See game details</a></dd></div>
-        <div><dt>Entry fee</dt><dd>{Object.values(gameSettings ?? {}).some(settings => settings.fee)
-          ? <a href="#games" onClick={(e) => { e.preventDefault(); onNavigate('games'); }}>See fees by game</a>
-          : event.entryFee ?? 'To be announced'}</dd></div>
+        <div><dt>Registration fee</dt><dd><strong>{perPersonFee.label}</strong></dd></div>
       </dl>
       <p className="registration-game-prompt" id="registration-game-prompt">Select your game</p>
       <div className="registration-portals" role="group" aria-labelledby="registration-game-prompt">{games.map((game) => {
@@ -440,10 +461,10 @@ function Contact() {
       <article>
         <h3>Get in touch</h3>
         <ul className="contact-list">
-          {coChairs.map(({ name, phone, email }) => <li key={email}>
-            <p className="contact-role">Project co-chair</p>
+          {contacts.map(({ name, role, phone, email }) => <li key={email}>
+            <p className="contact-role">{role}</p>
             <p className="contact-name">{name}</p>
-            <a href={'tel:+94' + phone.slice(1)}><ContactIcon kind="phone" /><span>{phone}</span></a>
+            <a href={'tel:' + phone.replace(/\s/g, '').replace(/^0/, '+94')}><ContactIcon kind="phone" /><span>{phone}</span></a>
             <a href={'mailto:' + email}><ContactIcon kind="email" /><span>{email}</span></a>
           </li>)}
         </ul>
@@ -493,7 +514,7 @@ export default function TournamentGuide({ guideRef, active, selectedGame, onGame
     <TeamLineup reduced={reduced} onNavigate={onNavigate} publishedTeams={eventData?.teams} />
     <Rules />
     <Rulebooks gameSettings={gameSettings} />
-    <Registration onNavigate={onNavigate} deadline={schedule.closesAt} gameSettings={gameSettings} />
+    <Registration onNavigate={onNavigate} deadline={schedule.closesAt} />
     <About />
     <Contact />
     <Footer onNavigate={onNavigate} privacyUrl={privacyUrl} />

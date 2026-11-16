@@ -13,7 +13,7 @@
 .ep-content { width: min(90%, 920px); margin-inline: auto; padding-block: clamp(27px, 5vh, 62px) 52px; }
 .ep-content > .eyebrow { margin: 0; color: var(--accent); }
 .ep-content h2 { margin: 10px 0 8px; font: 400 clamp(35px, 6vw, 68px)/1.04 var(--display); }
-.entry-roster-count { margin: 0 0 8px; color: var(--muted); font-size: 13px; font-weight: 750; }
+.entry-team-size { margin: 0 0 8px; color: var(--muted); font-size: 13px; font-weight: 750; }
 .entry-status { margin: 0 0 21px; color: var(--muted); font-size: 13px; line-height: 1.5; }
 .entry-steps { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); margin: 0 0 26px; border-block: 1px solid var(--rule); }
 .entry-steps button { display: flex; align-items: center; gap: 7px; min-height: 46px; padding: 8px; color: var(--muted); font-size: 12px; line-height: 1.25; text-align: left; }
@@ -31,9 +31,76 @@
 }
 .entry-field :is(input, select):focus { outline: 2px solid var(--focus); outline-offset: 1px; }
 .entry-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
-.entry-requirements, .entry-receipt { margin: 0 0 18px; padding: 14px; border: 1px solid var(--rule); background: var(--surface); }
-.entry-requirements a { text-decoration: underline; text-underline-offset: .18em; }
-.entry-bank { white-space: pre-wrap; }
+.entry-receipt { margin: 0 0 18px; padding: 14px; border: 1px solid var(--rule); background: var(--surface); }
+.entry-requirements { margin-bottom: 18px; }
+.entry-rulebook {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px clamp(12px, 2.5vw, 20px);
+  border: 1px solid var(--control-line);
+  border-radius: 10px;
+  background: linear-gradient(120deg, var(--surface-strong), var(--surface) 76%);
+  color: var(--ink);
+  text-decoration: none;
+  scroll-margin-top: 84px;
+}
+.entry-rulebook-copy { display: grid; gap: 3px; }
+.entry-rulebook-copy strong { font-size: 15px; line-height: 1.35; }
+.entry-rulebook-copy small { color: var(--muted); font-size: 12px; }
+.entry-rulebook-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--control-line);
+  border-radius: 8px;
+  background: var(--surface-tint);
+  color: var(--accent);
+}
+.entry-rulebook-icon svg { width: 20px; }
+.entry-rulebook:is(:hover, :focus-visible) { border-color: var(--accent); }
+.entry-rulebook:is(:hover, :focus-visible) .entry-rulebook-icon { background: var(--accent); color: var(--paper); }
+.entry-requirements-meta { display: grid; gap: 6px; padding: 10px 2px 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.entry-requirements-meta a { justify-self: start; text-decoration: underline; text-underline-offset: .18em; }
+.entry-requirements-meta p { margin: 0; }
+.entry-payment {
+  margin-bottom: 18px;
+  padding: clamp(12px, 2.2vw, 20px);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--surface-tint), var(--surface) 68%);
+}
+.entry-payment h4 { margin: 0 0 12px; font: 400 22px/1.2 var(--display); }
+.entry-payment-details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.entry-payment-details > div { min-width: 0; padding: 9px 11px; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); }
+.entry-payment-details > div:first-child { grid-column: span 2; }
+.entry-payment-details dt { color: var(--muted); font-size: 11px; font-weight: 750; line-height: 1.35; }
+.entry-payment-details dd { margin: 4px 0 0; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+.entry-payment-details > .entry-payment-fee { border-color: var(--control-line); background: var(--surface-tint); }
+.entry-payment-fee dd { color: var(--accent); font-weight: 800; }
+.entry-payment-bank dd { white-space: pre-wrap; }
+.entry-payment-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--surface-tint);
+}
+.entry-payment-total dt {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+.entry-payment-total small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; font-weight: 500; }
+.entry-payment-total dd { margin: 0; color: var(--accent); font-size: clamp(19px, 3vw, 25px); font-weight: 800; white-space: nowrap; }
+.entry-payment-note { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 13px; line-height: 1.5; }
 .entry-receipt strong { overflow-wrap: anywhere; }
 .entry-submit-error { color: var(--ink); border-left: 3px solid #c96c62; padding-left: 10px; }
 .entry-file input { font-size: 12px; padding: 7px; border-style: dashed; }
@@ -53,6 +120,7 @@
 .entry-review dd { margin: 3px 0 0; font-size: 15px; overflow-wrap: anywhere; }
 .entry-review ul { margin: 14px 0 0; padding: 0; list-style: none; }
 .entry-review li { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr); gap: 9px; padding: 11px 9px; border-top: 1px solid var(--rule); font-size: 13px; overflow-wrap: anywhere; }
+.entry-review-town-hall { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
 .entry-review-status { margin: 0 0 14px; color: var(--accent); font-size: 14px; font-weight: 750; }
 .entry-issues p { margin: 0 0 13px; color: var(--muted); font-size: 14px; line-height: 1.5; }
 .entry-issues ul { display: grid; gap: 7px; list-style: none; margin: 0; padding: 0; }
@@ -82,8 +150,11 @@
 }
 @keyframes editorial-open { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
 @media (max-width: 600px) {
-  .ep-toolbar, .ep-toolbar .toolbar-actions { gap: 6px; }
+  .ep-toolbar { gap: 6px; }
   .entry-grid { grid-template-columns: 1fr; }
+  .entry-payment-details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .entry-payment-details:has(.entry-payment-bank) { grid-template-columns: minmax(0, 1fr); }
+  .entry-payment-details > div:first-child { grid-column: 1 / -1; }
   .entry-steps button { flex-direction: column; align-items: flex-start; gap: 4px; min-height: 54px; padding-inline: 5px; font-size: 10px; }
   .entry-review dl { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }

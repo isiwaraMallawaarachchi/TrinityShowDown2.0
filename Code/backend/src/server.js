@@ -22,6 +22,7 @@ if (production && config.registrationEnabled && (!config.smtpUrl || !config.rece
 
 const db = createDatabase(process.env.DATABASE_URL);
 await db.query('SELECT 1 FROM trinity.media LIMIT 1');
+await db.query('SELECT 1 FROM trinity.team_players LIMIT 1');
 const stopReceipts = startReceipts(db, config);
 const server = createApp(db, config).listen(port, process.env.HOST ?? '127.0.0.1',
   () => console.log(`Trinity Showdown is listening on port ${port}.`));
