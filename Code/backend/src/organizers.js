@@ -12,9 +12,9 @@ const REGISTRATIONS = `
 const ENTRY = `r.id, r.team_name, r.captain_name, r.captain_email, r.captain_phone,
   r.status, r.submitted_at, r.extra_fields AS entry_fields, g.slug AS game, g.name AS game_name,
   r.logo_key, r.payment_proof_key, f.version AS form_version, f.rulebook_version, n.version AS privacy_version`;
-const ROSTER = `p.position, p.full_name, p.student_number, p.role, p.is_captain,
+const PLAYER_COLUMNS = `p.position, p.full_name, p.student_number, p.role, p.is_captain,
   p.in_game_id, p.extra_fields AS player_fields, i.name AS university`;
-const ROSTER_JOINS = 'JOIN trinity.roster_members p ON p.registration_id = r.id JOIN trinity.institutions i ON i.id = p.institution_id';
+const PLAYER_JOINS = 'JOIN trinity.team_players p ON p.registration_id = r.id JOIN trinity.institutions i ON i.id = p.institution_id';
 const playerImages = { front: 'idFront', back: 'idBack', portrait: 'portrait' };
 const imageUrl = (id, slot) => `/api/organizer/registrations/${id}/images/${slot}`;
 
@@ -64,13 +64,13 @@ export function organizerRoutes(db, config) {
   });
 
   router.get('/registrations/export.csv', async (req, res) => {
-    const { rows } = await db.query(`SELECT ${ENTRY}, ${ROSTER} ${REGISTRATIONS} ${ROSTER_JOINS}
+    const { rows } = await db.query(`SELECT ${ENTRY}, ${PLAYER_COLUMNS} ${REGISTRATIONS} ${PLAYER_JOINS}
       WHERE e.slug = $1 ORDER BY r.submitted_at DESC, r.id, p.position`, [config.edition]);
     await db.query("INSERT INTO trinity.organizer_audit (organizer_id, action) VALUES ($1, 'export')", [req.organizer.id]);
     const headers = ['Reference', 'Game', 'Team', 'Status', 'Submitted at', 'Captain', 'Captain email', 'Captain phone',
       'Form version', 'Rulebook version', 'Privacy version', 'Team fields', 'Logo', 'Payment proof', 'Position',
       'Player', 'University', 'University ID', 'Role', 'Is captain', 'In-game ID', 'In-game name', 'Player phone',
-      'ID front', 'ID back', 'Portrait', 'Player fields'];
+      'ID front', 'ID back', 'Portrait', 'Player fields', 'Town Hall level'];
     const link = path => path ? config.origin + path : '';
     const records = rows.map(row => {
       const player = playerData({
@@ -81,7 +81,8 @@ export function organizerRoutes(db, config) {
         row.privacy_version, JSON.stringify(row.entry_fields), link(imageUrl(row.id, 'logo')),
         link(imageUrl(row.id, 'proof')), row.position, row.full_name, row.university, row.student_number,
         row.role, row.is_captain, row.in_game_id, player.fields.gameName, player.fields.phone,
-        link(player.images.front), link(player.images.back), link(player.images.portrait), JSON.stringify(player.fields)];
+        link(player.images.front), link(player.images.back), link(player.images.portrait), JSON.stringify(player.fields),
+        player.fields.townHallLevel];
     });
     res.attachment('trinity-registrations.csv').type('text/csv').send(
       '\uFEFF' + [headers, ...records].map(record => record.map(csvCell).join(',')).join('\r\n') + '\r\n');
@@ -89,8 +90,8 @@ export function organizerRoutes(db, config) {
 
   router.get('/registrations/:id', async (req, res) => {
     const { logo_key, payment_proof_key, ...entry } = await loadEntry(db, config.edition, req.params.id);
-    const [roster, decisions] = await Promise.all([
-      db.query(`SELECT ${ROSTER} FROM trinity.roster_members p JOIN trinity.institutions i ON i.id = p.institution_id
+    const [players, decisions] = await Promise.all([
+      db.query(`SELECT ${PLAYER_COLUMNS} FROM trinity.team_players p JOIN trinity.institutions i ON i.id = p.institution_id
         WHERE p.registration_id = $1 ORDER BY p.position`, [entry.id]),
       db.query(`SELECT d.from_status, d.to_status, d.reason, d.decided_at, o.display_name AS organizer
         FROM trinity.registration_decisions d JOIN trinity.organizers o ON o.id = d.organizer_id
@@ -98,7 +99,7 @@ export function organizerRoutes(db, config) {
     ]);
     res.json({
       ...entry, images: { logo: imageUrl(entry.id, 'logo'), proof: imageUrl(entry.id, 'proof') },
-      players: roster.rows.map(player => playerData(player, entry.id)), decisions: decisions.rows,
+      players: players.rows.map(player => playerData(player, entry.id)), decisions: decisions.rows,
     });
   });
 
@@ -112,7 +113,7 @@ export function organizerRoutes(db, config) {
       const match = /^player-(\d{1,2})-(front|back|portrait)$/.exec(slot);
       if (match) {
         const { rows: [row] } = await db.query(`SELECT extra_fields ->> $3::text AS key
-          FROM trinity.roster_members WHERE registration_id = $1 AND position = $2`,
+          FROM trinity.team_players WHERE registration_id = $1 AND position = $2`,
         [entry.id, Number(match[1]), playerImages[match[2]]]);
         key = row?.key;
       }

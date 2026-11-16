@@ -27,6 +27,7 @@ Run the migrations and grants with the owner login.
 ```sh
 psql -h 127.0.0.1 -U trinity_owner -d trinity -X -v ON_ERROR_STOP=1 -f database/migrations/001_initial.sql
 psql -h 127.0.0.1 -U trinity_owner -d trinity -X -v ON_ERROR_STOP=1 -f database/migrations/002_media.sql
+psql -h 127.0.0.1 -U trinity_owner -d trinity -X -v ON_ERROR_STOP=1 -f database/migrations/003_team_players.sql
 psql -h 127.0.0.1 -U trinity_owner -d trinity -X -v ON_ERROR_STOP=1 -v runtime_role=trinity_api -f database/grant_runtime.sql
 ```
 
@@ -44,12 +45,14 @@ Open [the site](http://127.0.0.1:3000/) or [the organizer page](http://127.0.0.1
 ## Prepare registration
 
 - Set `TRINITY_BOOTSTRAP_PASSWORD` in your terminal to a private password of 12–128 characters. Run `npm --prefix backend run organizers -- bootstrap admin@example.org "Organizer name"` once, then clear the environment variable.
-- Copy [the edition example](backend/edition.example.json) to `backend/edition.local.json`. Enter the approved details and add each game's rulebook PDF, up to 10 MiB. Use `cod-mobile`, `pubg-mobile`, `mlbb` or `clash-of-clans` for game IDs. Include `+05:30` in Sri Lanka registration timestamps.
+- Copy [the edition example](backend/edition.example.json) to `backend/edition.local.json`. Use `cod-mobile`, `pubg-mobile`, `mlbb` or `clash-of-clans` for game IDs and include `+05:30` in Sri Lanka registration timestamps. `rulebookVersion: "1"` selects the bundled PDFs for `trinity-showdown`. For a custom PDF up to 10 MiB, set `rulebookFile` relative to the edition JSON. Set `bankInstructions` only to override the edition’s default bank details.
 - In a separate terminal, set `DATABASE_URL` to the owner connection and run `npm --prefix backend run edition -- ./edition.local.json`. Clear that variable afterward. Express uses the runtime login in `backend/.env`.
 - Configure `SMTP_URL` and `RECEIPT_FROM` and test a dummy entry and receipt on a staging database. To open registration on the live site, set `REGISTRATION_ENABLED=true` and restart Express.
 
 ## Data and API
 
 Express serves both browser apps and the API on one origin. PostgreSQL stores registrations and their uploads. Run `npm --prefix frontend test` and `npm --prefix backend test` from `Code`.
+
+The bundled PDFs live in `backend/rulebooks/`. To revise a published rulebook, add the PDF as a new version in `backend/src/rulebooks.js` and keep the previous PDF. Use a new `formVersion` when switching the edition’s registration form to the new `rulebookVersion`.
 
 See the [hosting guide](ops/README.md) to deploy the app.

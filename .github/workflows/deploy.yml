@@ -36,7 +36,7 @@ jobs:
           npm --prefix frontend run build
           tar -czf "$RUNNER_TEMP/trinity-release.tar.gz" \
             frontend/dist backend/package.json backend/package-lock.json \
-            backend/src backend/scripts organizer-frontend database
+            backend/src backend/scripts backend/rulebooks organizer-frontend database shared
       - name: Deploy to Azure
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.AZURE_DEPLOY_ENABLED == 'true'
         env:

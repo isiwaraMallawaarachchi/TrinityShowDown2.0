@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { reviewRegistration, rosterRules, rosterSlots, rosterSummary } from './registration.js';
+import { requiresTownHallLevel, townHallLevelPattern, trinityBankDetails, trinityBankInstructions } from '../../../../shared/registration-rules.mjs';
+import { perPersonFee, registrationFeeLabel, reviewRegistration, teamRules, playerSlots, teamSizeSummary } from './registration.js';
+import DownloadIcon from '../../shared/DownloadIcon.jsx';
 import { AmbientField } from '../../shared/motion.jsx';
 import { submitRegistration } from '../../shared/api.js';
 import { formatEventTime } from '../../shared/countdown.js';
@@ -50,7 +52,7 @@ function ImageField({ label, name }) {
   </label>;
 }
 
-function PlayerFields({ slot, idLabel, disabled = false }) {
+function PlayerFields({ slot, idLabel, needsTownHallLevel, disabled = false }) {
   const { id, label, phone, leader } = slot;
   return <fieldset className="entry-player" disabled={disabled}>
     <legend>{label}</legend>
@@ -59,6 +61,11 @@ function PlayerFields({ slot, idLabel, disabled = false }) {
       <TextField label="University ID number" name={id + '.studentId'} maxLength={64} />
       <TextField label="In-game name" name={id + '.gameName'} maxLength={80} />
       <TextField label={idLabel} name={id + '.gameId'} maxLength={80} />
+      {needsTownHallLevel && <div className="entry-field">
+        <label htmlFor={id + '-town-hall'}>Town Hall level</label>
+        <input id={id + '-town-hall'} name={id + '.townHallLevel'} inputMode="numeric"
+          pattern={townHallLevelPattern} title="Enter a whole number of 1 or higher" required />
+      </div>}
       {phone && <TextField label="Contact number" name={id + '.phone'} type="tel" maxLength={25} />}
       {leader && <TextField label="Leader email for the receipt" name={id + '.email'} type="email" maxLength={254} />}
       {leader && <ImageField label="Leader photo" name={id + '.portrait'} />}
@@ -68,10 +75,32 @@ function PlayerFields({ slot, idLabel, disabled = false }) {
   </fieldset>;
 }
 
+function PaymentDetails({ gameId, settings, starters }) {
+  const bankInstructions = settings?.bankInstructions?.trim().replace(/\r\n/g, '\n');
+  const customInstructions = bankInstructions && bankInstructions !== trinityBankInstructions &&
+    bankInstructions !== 'Add the approved bank transfer instructions.';
+  return <section className="entry-payment" aria-labelledby="entry-payment-title">
+    <h4 id="entry-payment-title">Bank details</h4>
+    <dl className="entry-payment-details">
+      {customInstructions ? <div className="entry-payment-bank">
+        <dt>Transfer instructions</dt>
+        <dd>{bankInstructions}</dd>
+      </div> : Object.entries(trinityBankDetails).map(([label, value]) =>
+        <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+      <div className="entry-payment-fee"><dt>Registration fee</dt><dd>{registrationFeeLabel(gameId, settings?.fee)}</dd></div>
+    </dl>
+    {perPersonFee.games.includes(gameId) && <dl className="entry-payment-total">
+      <dt>Total for starters <small>{starters} starters at Rs. {perPersonFee.amount} each</small></dt>
+      <dd>Rs. {(starters * perPersonFee.amount).toLocaleString('en-LK')}</dd>
+    </dl>}
+    <p className="entry-payment-note">The team leader must complete this form and upload proof of payment.</p>
+  </section>;
+}
+
 function RegistrationForm({ game, settings, institutions }) {
-  const fallback = rosterRules[game.id];
+  const fallback = teamRules[game.id];
   const rules = settings?.starters ? { ...fallback, starters: settings.starters, substitutes: settings.substitutes } : fallback;
-  const slots = rosterSlots(rules);
+  const slots = playerSlots(rules);
   const [step, setStep] = useState(0);
   const [substitutes, setSubstitutes] = useState({});
   const [review, setReview] = useState(null);
@@ -85,6 +114,7 @@ function RegistrationForm({ game, settings, institutions }) {
   const stepHeading = useRef(null);
   const pendingFocus = useRef(null);
   const idLabel = rules.playerIdLabel ?? 'In-game ID';
+  const needsTownHallLevel = requiresTownHallLevel(game.id);
 
   useEffect(() => {
     const target = pendingFocus.current;
@@ -160,12 +190,20 @@ function RegistrationForm({ game, settings, institutions }) {
     <h3 className="entry-step-title" ref={stepHeading} tabIndex={-1}>{steps[step]}</h3>
     <div data-step="0" id="entry-panel-0" role="tabpanel" aria-labelledby="entry-tab-0" hidden={step !== 0} className="entry-step">
       {settings?.rulebookUrl && <div className="entry-requirements">
-        <p><a href={settings.rulebookUrl}>Download the game rulebook</a> · <a href={settings.privacyUrl} target="_blank" rel="noopener">Read the privacy notice</a></p>
-        <p><strong>Entry fee:</strong> LKR {settings.fee}</p>
-        {settings.closesAt && <p><strong>Deadline:</strong> {formatEventTime(settings.closesAt)}</p>}
-        <p className="entry-bank"><strong>Bank transfer:</strong> {settings.bankInstructions}</p>
-        <p>The team name, logo and game will be public if the organizers approve the entry.</p>
+        <a className="entry-rulebook" href={settings.rulebookUrl} download>
+          <span className="entry-rulebook-copy">
+            <strong>Download the game rulebook</strong>
+            <small>PDF{settings.rulebookVersion && ` · Version ${settings.rulebookVersion}`}</small>
+          </span>
+          <span className="entry-rulebook-icon"><DownloadIcon /></span>
+        </a>
+        {(settings.privacyUrl || settings.closesAt || settings.formId) && <div className="entry-requirements-meta">
+          {settings.privacyUrl && <a href={settings.privacyUrl} target="_blank" rel="noopener">Read the privacy notice</a>}
+          {settings.closesAt && <p><strong>Deadline</strong> {formatEventTime(settings.closesAt)}</p>}
+          {settings.formId && <p>The team name, logo and game will be public if the organizers approve the entry.</p>}
+        </div>}
       </div>}
+      <PaymentDetails gameId={game.id} settings={settings} starters={rules.starters} />
       <div className="entry-grid">
         <TextField label="Team name" name="teamName" maxLength={100} />
         {settings?.formId && institutions.length ? <label className="entry-field">
@@ -176,16 +214,15 @@ function RegistrationForm({ game, settings, institutions }) {
           </select>
         </label> : <TextField label="University name" name="university" />}
         <ImageField label="Team logo" name="teamLogo" />
-        <ImageField label="Bank transfer proof" name="paymentProof" />
+        <ImageField label="Proof of payment" name="paymentProof" />
       </div>
-      {!settings?.rulebookUrl && <p className="entry-help">The entry fee and bank details will be published before registration opens.</p>}
     </div>
     <div data-step="1" id="entry-panel-1" role="tabpanel" aria-labelledby="entry-tab-1" hidden={step !== 1} className="entry-step">
-      <PlayerFields slot={slots[0]} idLabel={idLabel} />
+      <PlayerFields slot={slots[0]} idLabel={idLabel} needsTownHallLevel={needsTownHallLevel} />
     </div>
     <div data-step="2" id="entry-panel-2" role="tabpanel" aria-labelledby="entry-tab-2" hidden={step !== 2} className="entry-step entry-stack">
       {slots.filter((slot) => !slot.leader && !slot.optional).map((slot) =>
-        <PlayerFields key={slot.id} slot={slot} idLabel={idLabel} />)}
+        <PlayerFields key={slot.id} slot={slot} idLabel={idLabel} needsTownHallLevel={needsTownHallLevel} />)}
     </div>
     <div data-step="3" id="entry-panel-3" role="tabpanel" aria-labelledby="entry-tab-3" hidden={step !== 3} className="entry-step entry-stack">
       <p className="entry-help">Substitutes are optional. Add each substitute you want to include.</p>
@@ -193,7 +230,7 @@ function RegistrationForm({ game, settings, institutions }) {
         <label className="entry-check"><input type="checkbox" checked={Boolean(substitutes[slot.id])}
           onChange={(e) => setSubstitutes({ ...substitutes, [slot.id]: e.target.checked })} /> Include {slot.label.toLowerCase()}</label>
         <div hidden={!substitutes[slot.id]}>
-          <PlayerFields slot={slot} idLabel={idLabel} disabled={!substitutes[slot.id]} />
+          <PlayerFields slot={slot} idLabel={idLabel} needsTownHallLevel={needsTownHallLevel} disabled={!substitutes[slot.id]} />
         </div>
       </div>)}
     </div>
@@ -212,7 +249,11 @@ function RegistrationForm({ game, settings, institutions }) {
         <p className="entry-review-status">All required details are complete.</p>
         <dl><div><dt>Team</dt><dd>{entry.team}</dd></div><div><dt>University</dt><dd>{universityName}</dd></div>
           <div><dt>Images attached</dt><dd>{entry.files}</dd></div></dl>
-        <ul>{entry.players.map((player) => <li key={player.id}><span>{player.role}</span><strong>{player.name}</strong><span>{player.gameName}</span></li>)}</ul>
+        <ul>{entry.players.map((player) => <li key={player.id}>
+          <span>{player.role}</span>
+          <strong>{player.name}</strong>
+          <span>{player.gameName}{player.townHallLevel && <small className="entry-review-town-hall">Town Hall {player.townHallLevel}</small>}</span>
+        </li>)}</ul>
       </div>}
       {entry && settings?.open && <label className="entry-check">
         <input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} />
@@ -232,7 +273,7 @@ function RegistrationForm({ game, settings, institutions }) {
   </form>;
 }
 
-export default function RegistrationPortal({ game, settings, institutions = [], onClose, themeControl }) {
+export default function RegistrationPortal({ game, settings, institutions = [], onClose }) {
   const dialog = useRef(null);
   useEffect(() => {
     const element = dialog.current;
@@ -246,15 +287,13 @@ export default function RegistrationPortal({ game, settings, institutions = [], 
       <AmbientField scene="dialog" active />
       <div className="ep-toolbar">
         <p className="eyebrow">Trinity Showdown · Registration</p>
-        <div className="toolbar-actions">{themeControl}
-          <form method="dialog"><button className="close-menu" autoFocus>Close <span aria-hidden="true">×</span></button></form>
-        </div>
+        <form method="dialog"><button className="close-menu" autoFocus>Close <span aria-hidden="true">×</span></button></form>
       </div>
       <div className="ep-content">
         <p className="eyebrow">Team registration</p>
         <h2 id="registration-panel-title">{game.name}</h2>
-        <p className="entry-roster-count">{settings?.starters ? rosterSummary(game.id, settings) : rosterSummary(game.id)}
-          {!settings?.starters && rosterRules[game.id].provisional && ' · Provisional roster'}</p>
+        <p className="entry-team-size">{settings?.starters ? teamSizeSummary(game.id, settings) : teamSizeSummary(game.id)}
+          {!settings?.starters && teamRules[game.id].provisional && ' · Provisional team size'}</p>
         <p className="entry-status" id="registration-status">{settings?.open ? 'Registration is open.' : 'Registration submissions aren’t open.'}</p>
         <RegistrationForm key={game.id + ':' + (settings?.formId ?? 'preview')} game={game}
           settings={settings} institutions={institutions} />

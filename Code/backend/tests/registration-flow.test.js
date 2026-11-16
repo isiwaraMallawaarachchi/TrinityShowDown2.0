@@ -10,6 +10,7 @@ import sharp from 'sharp';
 import { createApp } from '../src/app.js';
 import { hashPassword } from '../src/auth.js';
 import { startReceipts } from '../src/receipts.js';
+import { bundledRulebook } from '../src/rulebooks.js';
 
 async function localMailSink() {
   const messages = [];
@@ -43,10 +44,31 @@ async function localMailSink() {
   return { server, messages };
 }
 
+test('bundled rulebooks can be downloaded before registration is configured', async t => {
+  const db = { query: async () => ({ rows: [] }) };
+  const server = createApp(db, { edition: 'trinity-showdown', registrationEnabled: false }).listen(0, '127.0.0.1');
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  await once(server, 'listening');
+  const origin = 'http://127.0.0.1:' + server.address().port;
+  const { games } = await (await fetch(origin + '/api/public/event')).json();
+  assert.deepEqual(Object.keys(games).sort(), ['clash-of-clans', 'cod-mobile', 'mlbb', 'pubg-mobile']);
+  for (const [game, settings] of Object.entries(games)) {
+    assert.equal(settings.open, false);
+    const pdf = await fetch(origin + settings.rulebookUrl, { headers: { Range: 'bytes=0-4' } });
+    assert.equal(pdf.status, 206);
+    assert.equal(pdf.headers.get('content-type'), 'application/pdf');
+    assert.equal(pdf.headers.get('content-disposition').replaceAll('"', ''), `attachment; filename=${game}-v1.pdf`);
+    assert.equal(await pdf.text(), '%PDF-');
+  }
+  const unavailable = await fetch(origin + '/api/public/rulebooks/files/cod-mobile/2');
+  assert.equal(unavailable.status, 404);
+  await unavailable.arrayBuffer();
+});
+
 test('captain and organizer APIs share durable, private submissions and publish only approved teams', async t => {
   const db = await PGlite.create();
   t.after(() => db.close());
-  for (const file of ['001_initial.sql', '002_media.sql']) {
+  for (const file of ['001_initial.sql', '002_media.sql', '003_team_players.sql']) {
     await db.exec(await readFile(new URL('../../database/migrations/' + file, import.meta.url), 'utf8'));
   }
   const { rows: [{ id: university }] } = await db.query("INSERT INTO trinity.institutions(name) VALUES ('Test University') RETURNING id");
@@ -54,16 +76,22 @@ test('captain and organizer APIs share durable, private submissions and publish 
     INSERT INTO trinity.organizers(email, display_name, password_hash)
     VALUES ('organizer@example.com', 'Test Organizer', $1) RETURNING id`, [await hashPassword('synthetic-password-1')]);
   await db.exec(`
-    INSERT INTO trinity.editions(slug, title) VALUES ('test', 'Test edition');
+    INSERT INTO trinity.editions(slug, title) VALUES ('trinity-showdown', 'Test edition');
     INSERT INTO trinity.privacy_notices(version, body) VALUES ('test', 'Synthetic notice');
     INSERT INTO trinity.media(key, content_type, bytes) VALUES ('rules/test', 'application/pdf', convert_to('%PDF-1.4', 'UTF8'));
     INSERT INTO trinity.edition_games(edition_id, game_id, display_order, registration_opens_at, registration_closes_at)
       SELECT e.id, g.id, g.id, now() - interval '1 hour', now() + interval '1 hour'
       FROM trinity.editions e CROSS JOIN trinity.games g;
+  `);
+  const bundled = bundledRulebook('trinity-showdown', 'clash-of-clans', '1');
+  await db.query(`
     INSERT INTO trinity.registration_forms(edition_game_id, version, privacy_notice_id, rulebook_version, rulebook_key,
       fee_lkr, bank_instructions, min_starters, max_starters, min_substitutes, max_substitutes)
-      SELECT eg.id, 1, n.id, 'test', 'rules/test', 100, 'Synthetic bank instructions', 5, 5, 0, 2
-      FROM trinity.edition_games eg CROSS JOIN trinity.privacy_notices n;
+      SELECT eg.id, 1, n.id, CASE WHEN g.slug = 'clash-of-clans' THEN '1' ELSE 'test' END,
+        CASE WHEN g.slug = 'clash-of-clans' THEN $1 ELSE 'rules/test' END, 100, 'Synthetic bank instructions', 5, 5, 0, 2
+      FROM trinity.edition_games eg JOIN trinity.games g ON eg.game_id = g.id CROSS JOIN trinity.privacy_notices n;
+  `, [bundled.key]);
+  await db.exec(`
     UPDATE trinity.edition_games eg SET active_form_id = f.id FROM trinity.registration_forms f
       WHERE f.edition_game_id = eg.id;
     CREATE ROLE trinity_test_api;
@@ -72,7 +100,7 @@ test('captain and organizer APIs share durable, private submissions and publish 
   await db.exec(grants.replaceAll(':"runtime_role"', 'trinity_test_api'));
   await db.exec('SET ROLE trinity_test_api');
   const apiDb = { query: db.query.bind(db), connect: async () => ({ query: db.query.bind(db), release() {} }) };
-  const config = { edition: 'test', registrationEnabled: true, allowedOrigins: [] };
+  const config = { edition: 'trinity-showdown', registrationEnabled: true, allowedOrigins: [] };
   const server = createApp(apiDb, config).listen(0, '127.0.0.1');
   t.after(() => new Promise(resolve => server.close(resolve)));
   await once(server, 'listening');
@@ -111,6 +139,14 @@ test('captain and organizer APIs share durable, private submissions and publish 
 
   const event = await (await request('public/event')).json();
   assert.equal(event.games['cod-mobile'].open, true);
+  assert.equal(await (await fetch(origin + event.games['cod-mobile'].rulebookUrl)).text(), '%PDF-1.4');
+  const cocRulebook = event.games['clash-of-clans'];
+  assert.equal(cocRulebook.open, true);
+  assert.equal(cocRulebook.rulebookUrl, `/api/public/rulebooks/${cocRulebook.formId}`);
+  const bundledPdf = await fetch(origin + cocRulebook.rulebookUrl, { headers: { Range: 'bytes=0-4' } });
+  assert.equal(bundledPdf.status, 206);
+  assert.equal(bundledPdf.headers.get('content-disposition').replaceAll('"', ''), 'attachment; filename=clash-of-clans-v1.pdf');
+  assert.equal(await bundledPdf.text(), '%PDF-');
   const png = await sharp({ create: { width: 8, height: 8, channels: 3, background: '#123456' } }).png().toBuffer();
   const photo = new Blob([png], { type: 'image/png' });
   function team(game, requestId = randomUUID(), duplicate = false) {
@@ -168,8 +204,40 @@ test('captain and organizer APIs share durable, private submissions and publish 
   assert.equal((await request(`public/teams/${reference}/logo`)).status, 404);
   assert.equal((await request(detailsPath + '/images/proof', { authenticated: true })).status, 200);
   assert.equal((await request('public/registrations/pubg-mobile', { body: team('pubg-mobile') })).status, 201);
+
+  const coc = team('clash-of-clans');
+  for (const key of coc.keys()) {
+    if (key.endsWith('.studentId')) coc.set(key, 'coc-' + coc.get(key));
+  }
+  const levels = ['1', '19', '14', '15', '16', '9007199254740993', '21'];
+  const cocSlots = ['leader', 'player-2', 'player-3', 'player-4', 'player-5', 'sub-1', 'sub-2'];
+  for (const [index, slot] of cocSlots.entries()) coc.set(slot + '.townHallLevel', levels[index]);
+  coc.delete('sub-2.townHallLevel');
+  const missingLevel = await request('public/registrations/clash-of-clans', { body: coc });
+  assert.equal(missingLevel.status, 400);
+  assert.match((await missingLevel.json()).error, /Town Hall level of 1 or higher/);
+  coc.set('sub-2.townHallLevel', '0');
+  const invalidLevel = await request('public/registrations/clash-of-clans', { body: coc });
+  assert.equal(invalidLevel.status, 400);
+  assert.match((await invalidLevel.json()).error, /Town Hall level of 1 or higher/);
+  coc.set('sub-2.townHallLevel', '021');
+  const cocSubmission = await request('public/registrations/clash-of-clans', { body: coc });
+  assert.equal(cocSubmission.status, 201, await cocSubmission.clone().text());
+  const { reference: cocReference } = await cocSubmission.json();
+  const cocDetails = await request('organizer/registrations/' + cocReference, { authenticated: true });
+  assert.equal(cocDetails.status, 200);
+  const cocEntry = await cocDetails.json();
+  assert.deepEqual(cocEntry.entry_fields, {});
+  assert.deepEqual(cocEntry.players.map(player => player.fields.townHallLevel), levels);
+  assert.equal((await (await request('public/registrations/clash-of-clans', { body: coc })).json()).reference, cocReference);
+
   const exported = await request('organizer/registrations/export.csv', { authenticated: true });
-  assert.match(await exported.text(), /"'=Synthetic team"/);
+  const csv = await exported.text();
+  assert.match(csv, /"'=Synthetic team"/);
+  const [csvHeader, ...csvRows] = csv.split('\r\n');
+  assert.match(csvHeader, /,"Town Hall level"$/);
+  assert.deepEqual(csvRows.filter(row => row.startsWith('"' + cocReference + '"'))
+    .map(row => row.match(/,"(\d+)"$/)?.[1]), levels);
 
   const invitation = await request('organizer/invites', { authenticated: true, json: { email: 'second@example.com' } });
   assert.equal(invitation.status, 201, await invitation.clone().text());
@@ -196,12 +264,12 @@ test('captain and organizer APIs share durable, private submissions and publish 
   try {
     const deadline = Date.now() + 5000;
     let sent = 0;
-    while (sent < 2 && Date.now() < deadline) {
+    while (sent < 3 && Date.now() < deadline) {
       await delay(50);
       const result = await db.query('SELECT count(*)::int AS count FROM trinity.receipt_outbox WHERE sent_at IS NOT NULL');
       sent = result.rows[0].count;
     }
-    assert.equal(sent, 2);
+    assert.equal(sent, 3);
     assert.equal(sink.messages.filter(message => message.includes(reference)).length, 1);
     assert.ok(sink.messages.every(message => message.replace(/=\n/g, '').includes('awaiting organizer review')));
   } finally {

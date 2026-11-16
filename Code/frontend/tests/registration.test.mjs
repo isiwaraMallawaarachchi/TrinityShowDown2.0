@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { reviewRegistration, rosterRules, rosterSlots } from '../src/features/registration/registration.js';
+import { reviewRegistration, teamRules, playerSlots } from '../src/features/registration/registration.js';
 
 test('each portal includes the leader in its starter count and offers optional substitutes', () => {
   for (const [id, starters, substitutes] of [['cod-mobile', 5, 1], ['pubg-mobile', 4, 2], ['mlbb', 5, 2], ['clash-of-clans', 5, 1]]) {
-    const slots = rosterSlots(rosterRules[id]);
+    const slots = playerSlots(teamRules[id]);
     assert.equal(slots.filter((slot) => !slot.optional).length, starters);
     assert.equal(slots.filter((slot) => slot.optional).length, substitutes);
     assert.deepEqual(slots.filter((slot) => slot.phone).map((slot) => slot.id), ['leader', 'player-2']);
@@ -25,7 +25,7 @@ function entryWithStarters(slots) {
 }
 
 test('review counts attached files and excludes unused optional slots', () => {
-  const slots = rosterSlots(rosterRules['pubg-mobile']);
+  const slots = playerSlots(teamRules['pubg-mobile']);
   const form = entryWithStarters(slots);
   form.set('teamLogo', new File(['sample'], 'sample.png', { type: 'image/png' }));
   const result = reviewRegistration(form, slots);
@@ -36,7 +36,7 @@ test('review counts attached files and excludes unused optional slots', () => {
 });
 
 test('review rejects a starter and substitute with the same university ID', () => {
-  const slots = rosterSlots(rosterRules.mlbb);
+  const slots = playerSlots(teamRules.mlbb);
   const form = entryWithStarters(slots);
   form.set('sub-1.name', 'Sample Substitute');
   form.set('sub-1.studentId', ' 000-LEADER ');

@@ -59,7 +59,7 @@ function reviewControls(entry, decide) {
     const check = element('input');
     check.type = 'checkbox';
     check.required = true;
-    label.append(check, 'I reviewed the roster and verified the bank transfer proof.');
+    label.append(check, 'I reviewed the player list and verified the bank transfer proof.');
     approve.append(label, element('button', 'Approve and publish team', 'primary'));
     withForm(approve, () => decide('approved', { paymentVerified: check.checked }));
     section.append(approve);
@@ -80,25 +80,28 @@ function reviewControls(entry, decide) {
 export function renderRegistrationDetail(detail, entry, decide) {
   const header = element('header', undefined, 'detail-header');
   header.append(element('h2', entry.team_name), statusBadge(entry.status));
+  const { townHallLevel, ...entryFields } = entry.entry_fields;
   const overview = facts({
     Game: entry.game_name, Submitted: time.format(new Date(entry.submitted_at)),
     Captain: entry.captain_name, Email: entry.captain_email, Phone: entry.captain_phone, Reference: entry.id,
     'Form version': entry.form_version, 'Rulebook version': entry.rulebook_version, 'Privacy notice': entry.privacy_version,
-    ...Object.fromEntries(Object.entries(entry.entry_fields).map(([key, value]) => [key, JSON.stringify(value)])),
+    ...(townHallLevel != null && { 'Team Town Hall level': townHallLevel }),
+    ...Object.fromEntries(Object.entries(entryFields).map(([key, value]) => [key, JSON.stringify(value)])),
   });
   const attachments = element('section');
   const files = element('div', undefined, 'images');
   files.append(image('Team logo', entry.images.logo), image('Bank transfer proof', entry.images.proof));
   attachments.append(element('h3', 'Attachments'), files);
-  const roster = element('section');
-  roster.append(element('h3', 'Roster'));
+  const players = element('section');
+  players.append(element('h3', 'Players'));
   for (const player of entry.players) {
     const playerCard = element('details', undefined, 'player');
     const role = player.is_captain ? 'Team leader' : player.role === 'starter' ? 'Starter' : 'Substitute';
-    const { gameName, phone, ...extra } = player.fields;
+    const { gameName, phone, townHallLevel, ...extra } = player.fields;
     playerCard.append(element('summary', player.full_name + ' · ' + role), facts({
       University: player.university, 'University ID': player.student_number, 'In-game ID': player.in_game_id,
       'In-game name': gameName, Phone: phone,
+      ...(townHallLevel != null && { 'Town Hall level': townHallLevel }),
       ...Object.fromEntries(Object.entries(extra).map(([key, value]) => [key, JSON.stringify(value)])),
     }));
     const photos = element('div', undefined, 'images');
@@ -106,9 +109,9 @@ export function renderRegistrationDetail(detail, entry, decide) {
       photos.append(image({ front: 'University ID front', back: 'University ID back', portrait: 'Leader photo' }[key], url));
     }
     playerCard.append(photos);
-    roster.append(playerCard);
+    players.append(playerCard);
   }
-  detail.replaceChildren(header, overview, attachments, roster);
+  detail.replaceChildren(header, overview, attachments, players);
   if (entry.status !== 'rejected') detail.append(reviewControls(entry, decide));
   if (entry.decisions.length) {
     const history = element('section');
