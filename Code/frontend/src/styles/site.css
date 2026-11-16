@@ -1,49 +1,6 @@
 :root {
   --body: "Mulish Variable", Mulish, sans-serif;
   --display: "Artifex Hand CF", artifex-hand-cf, "Marcellus", serif;
-  color-scheme: light;
-  --palette-deep: #1b5e20;
-  --palette-mid: #66bb6a;
-  --palette-soft: #a5d6a7;
-  --palette-pale: #e8f5e9;
-  --paper: var(--palette-pale);
-  --surface: color-mix(in srgb, var(--paper), white 40%);
-  --surface-tint: color-mix(in srgb, var(--paper), var(--palette-soft) 28%);
-  --surface-strong: var(--palette-soft);
-  --page-glow: color-mix(in srgb, var(--paper), var(--palette-mid) 32%);
-  --ink: color-mix(in srgb, var(--palette-deep), black 30%);
-  --muted: var(--palette-deep);
-  --rule: color-mix(in srgb, var(--palette-mid), var(--paper) 46%);
-  --control-line: color-mix(in srgb, var(--palette-mid), var(--palette-deep) 55%);
-  --accent: var(--palette-deep);
-  --accent-hover: var(--ink);
-  --on-accent: var(--palette-pale);
-  --focus: var(--accent);
-  --error-ink: #79252e;
-  --error-surface: #ffe2e5;
-  --editorial-glass: linear-gradient(130deg, var(--surface), color-mix(in srgb, var(--surface-strong) 58%, var(--paper)));
-  --scene-base: color-mix(in srgb, var(--palette-deep) 36%, black);
-  --scene-depth: color-mix(in srgb, var(--palette-deep) 57%, var(--scene-base));
-  --ivory: color-mix(in srgb, var(--palette-pale) 62%, white);
-  --scene-highlight: var(--palette-soft);
-  --scene-line: color-mix(in srgb, var(--scene-highlight) 42%, transparent);
-  --scene-glass: linear-gradient(135deg, color-mix(in srgb, var(--scene-depth) 84%, transparent), color-mix(in srgb, var(--scene-base) 92%, transparent));
-  --scene-action: var(--scene-highlight);
-  --scene-action-hover: var(--ivory);
-  --scene-quiet: color-mix(in srgb, var(--scene-base) 76%, transparent);
-  --scene-quiet-ink: var(--ivory);
-  --hero-shade: linear-gradient(180deg, color-mix(in srgb, var(--scene-base) 76%, transparent), transparent 31% 63%, color-mix(in srgb, var(--scene-base) 90%, transparent));
-  --hero-grade: saturate(1.08) brightness(1.03);
-  --hero-aura: color-mix(in srgb, var(--palette-mid) 26%, transparent);
-  --footer: var(--palette-deep);
-  --footer-edge: var(--palette-mid);
-  --ui-shadow: color-mix(in srgb, var(--scene-base) 24%, transparent);
-  font-family: var(--body);
-  color: var(--ink);
-  background: var(--paper);
-  font-synthesis: none;
-}
-[data-theme="dark"] {
   color-scheme: dark;
   --palette-deep: #092328;
   --palette-mid: #12544f;
@@ -67,11 +24,24 @@
   --editorial-glass: linear-gradient(130deg, var(--surface-tint), var(--paper));
   --scene-base: color-mix(in srgb, var(--palette-deep) 70%, black);
   --scene-depth: var(--palette-deep);
+  --ivory: color-mix(in srgb, var(--palette-pale) 62%, white);
   --scene-highlight: var(--palette-pale);
+  --scene-line: color-mix(in srgb, var(--scene-highlight) 42%, transparent);
+  --scene-glass: linear-gradient(135deg, color-mix(in srgb, var(--scene-depth) 84%, transparent), color-mix(in srgb, var(--scene-base) 92%, transparent));
+  --scene-action: var(--scene-highlight);
+  --scene-action-hover: var(--ivory);
+  --scene-quiet: color-mix(in srgb, var(--scene-base) 76%, transparent);
+  --scene-quiet-ink: var(--ivory);
+  --hero-shade: linear-gradient(180deg, color-mix(in srgb, var(--scene-base) 76%, transparent), transparent 31% 63%, color-mix(in srgb, var(--scene-base) 90%, transparent));
   --hero-grade: saturate(.92) brightness(.85);
   --hero-aura: color-mix(in srgb, var(--palette-soft) 36%, transparent);
   --footer: color-mix(in srgb, var(--paper) 62%, black);
   --footer-edge: var(--palette-mid);
+  --ui-shadow: color-mix(in srgb, var(--scene-base) 24%, transparent);
+  font-family: var(--body);
+  color: var(--ink);
+  background: var(--paper);
+  font-synthesis: none;
 }
 * { box-sizing: border-box; }
 html { scrollbar-width: none; overflow-anchor: none; }
@@ -286,18 +256,11 @@ form, figure, dl, dd { margin: 0; }
   opacity: clamp(0, calc((var(--nav-progress) - .18) * 1.5), 1);
   transform: translateY(calc((1 - var(--nav-progress)) * -8px));
 }
-.header-brand:not([inert]), .menu-toggle, .registration-link, .theme-toggle { pointer-events: auto; }
+.header-brand:not([inert]), .menu-toggle, .registration-link { pointer-events: auto; }
 .header-brand img { width: min(100%, 121px); height: auto; filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--scene-base) 70%, transparent)); }
-.nav-actions { display: flex; width: min(100%, var(--nav-rest)); align-items: stretch; }
 .menu-toggle, .registration-link { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; padding: 0 9px; font-size: 12px; font-weight: 750; white-space: nowrap; }
-.menu-toggle { flex: 1; min-width: 0; }
-.registration-link { width: min(100%, var(--nav-rest)); }
+.menu-toggle, .registration-link { width: min(100%, var(--nav-rest)); }
 .menu-toggle:hover, .registration-link:hover { color: var(--nav-hover); }
-.theme-toggle { position: relative; display: grid; place-items: center; flex: 0 0 44px; width: 44px; min-height: 44px; border-radius: 10px; color: var(--nav-hover, var(--accent)); }
-.theme-toggle svg { width: 19px; height: 19px; }
-.theme-toggle:hover { background: color-mix(in srgb, currentColor 13%, transparent); }
-.nav-actions .theme-toggle::before { content: ''; position: absolute; inset: 11px auto 11px 0; width: 1px; background: var(--nav-line); }
-.toolbar-actions { display: flex; align-items: center; gap: 10px; }
 .menu-glyph { width: 20px; display: grid; gap: 3px; }
 .menu-glyph i { height: 1px; background: currentColor; }
 .menu-glyph i:nth-child(2) { width: 68%; transition: width .25s; }

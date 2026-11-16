@@ -9,20 +9,6 @@ let selectedId;
 let listRequest = 0;
 let detailRequest = 0;
 
-function setTheme(theme) {
-  document.documentElement.dataset.theme = theme;
-  get('theme').setAttribute('aria-pressed', String(theme === 'dark'));
-}
-
-function initializeTheme() {
-  let theme;
-  try { theme = localStorage.getItem('trinity-theme'); } catch {}
-  if (theme !== 'light' && theme !== 'dark') {
-    theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-  setTheme(theme);
-}
-
 async function api(path, values) {
   const response = await fetch(origin + path, values === undefined ? undefined : {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values),
@@ -131,11 +117,6 @@ withForm(get('invite'), async values => {
   if (get('invite-dialog').open) get('invite-link').select();
 }, message => notify(message, get('invite-dialog').open ? 'invite-notice' : 'notice'));
 get('open-invite').addEventListener('click', () => get('invite-dialog').showModal());
-get('theme').addEventListener('click', () => {
-  const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-  setTheme(theme);
-  try { localStorage.setItem('trinity-theme', theme); } catch {}
-});
 get('logout').addEventListener('click', async () => {
   try {
     await api('/logout', {});
@@ -149,7 +130,6 @@ for (const filter of ['game', 'status']) get(filter).addEventListener('change', 
 get('previous').addEventListener('click', () => { page--; loadList(); });
 get('more').addEventListener('click', () => { page++; loadList(); });
 
-initializeTheme();
 renderEmptyDetail(get('detail'));
 if (inviteToken) showSignIn(true);
 else {
