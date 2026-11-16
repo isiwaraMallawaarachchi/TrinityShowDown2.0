@@ -6,6 +6,8 @@ export const games = [
     shortName: 'COD Mobile',
     title: ['Call of Duty:', 'Mobile'],
     genre: 'Tactical shooter',
+    teamSlots: 16,
+    format: 'Knockout',
     teaser: 'Take the objective with quick calls, clean rotations and teamwork under pressure.',
   },
   {
@@ -15,6 +17,8 @@ export const games = [
     shortName: 'PUBG Mobile',
     title: ['PUBG', 'Mobile'],
     genre: 'Battle royale',
+    teamSlots: 20,
+    format: 'Knockout',
     teaser: 'Pick your drop. Hold your ground. Make the last circle count.',
   },
   {
@@ -24,6 +28,7 @@ export const games = [
     shortName: 'Mobile Legends',
     title: ['Mobile Legends:', 'Bang Bang'],
     genre: 'MOBA',
+    teamSlots: 16,
     teaser: 'Draft your lineup, control the map and turn a single fight into a victory.',
   },
   {
@@ -33,6 +38,8 @@ export const games = [
     shortName: 'Clash of Clans',
     title: ['Clash of', 'Clans'],
     genre: 'Strategy',
+    teamSlots: 32,
+    format: 'Knockout',
     teaser: 'Read the defenses, plan the attack and make every troop count.',
   },
 ];
@@ -44,7 +51,7 @@ export const event = {
   registrationClosesAt: '2026-12-06T23:59:00+05:30',
   milestones: [
     { id: 'registration-opens', title: 'Registration opens', description: 'Choose a game and prepare your team entry.' },
-    { id: 'registration-closes', title: 'Registration closes', description: 'Submit your final roster and payment proof before the deadline.' },
+    { id: 'registration-closes', title: 'Registration closes', description: 'Submit your final player list and payment proof before the deadline.' },
     { id: 'tournament-day', title: 'Tournament day', description: 'The schedule and venue will be announced here.' },
   ],
 };
@@ -57,7 +64,8 @@ export const previewTeams = {
   'clash-of-clans': ['Ember Keep', 'Rune Wardens', 'Stone Reign', 'Bastion Forge', 'Gold Legion', 'Cinder Gate', 'High Citadel', 'Thorn Crown'],
 };
 
-export const coChairs = [
-  { name: 'Lahiru Dodangoda', phone: '0767535881', email: 'lahirudodangoda1@gmail.com' },
-  { name: 'Chanitha Samarasinghe', phone: '0743677737', email: 'tivolithe1st@gmail.com' },
+export const contacts = [
+  { name: 'Lahiru Dodangoda', role: 'Project co-chair', phone: '0767535881', email: 'lahirudodangoda1@gmail.com' },
+  { name: 'Chanitha Samarasinghe', role: 'Project co-chair', phone: '0743677737', email: 'tivolithe1st@gmail.com' },
+  { name: 'Oshani Malagala', role: 'Tournament contact', phone: '+94 77 795 6720', email: 'oshanimalagala2005@gmail.com' },
 ];
