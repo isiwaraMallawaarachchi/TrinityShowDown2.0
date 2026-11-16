@@ -29,6 +29,7 @@ export const games = [
     title: ['Mobile Legends:', 'Bang Bang'],
     genre: 'MOBA',
     teamSlots: 16,
+    format: 'Knockout',
     teaser: 'Draft your lineup, control the map and turn a single fight into a victory.',
   },
   {
