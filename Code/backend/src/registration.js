@@ -75,7 +75,7 @@ async function readImage(file, field, requestId, displayLogo = false) {
 }
 
 async function registrationPayload(values, files, form) {
-  const { requestId, university } = values;
+  const { requestId } = values;
   const team = text(values.teamName, 'Team name', 100);
   const captainEmail = email(values['leader.email']);
   const uploadFields = new Set();
@@ -106,7 +106,7 @@ async function registrationPayload(values, files, form) {
     if (studentIds.has(normalized)) throw new HttpError(409, 'A player appears more than once on this team.');
     studentIds.add(normalized);
     const member = {
-      full_name: field('name', `${id} full name`, 120), institution_id: university,
+      full_name: field('name', `${id} full name`, 120),
       student_number: studentNumber, role, is_captain: Boolean(leader),
       in_game_id: field('gameId', `${id} in-game ID`, 80),
       extra_fields: { gameName: field('gameName', `${id} in-game name`, 80) },
@@ -158,7 +158,7 @@ export function publicRoutes(db, config) {
       db.query('SELECT event_starts_at AS "startsAt", venue FROM trinity.editions WHERE slug = $1', [config.edition]),
       db.query(`${FORM_SELECT} LEFT JOIN trinity.registration_forms f ON f.id = eg.active_form_id
         ${FORM_NOTICE} WHERE e.slug = $1 ORDER BY eg.display_order`, [config.edition]),
-      db.query('SELECT id, name FROM trinity.institutions ORDER BY name'),
+      config.acceptAnyUniversity ? { rows: [] } : db.query('SELECT id, name FROM trinity.institutions ORDER BY name'),
       db.query(`SELECT t.id, t.game_slug AS "gameId", t.team_name AS name FROM trinity.public_teams t
         JOIN trinity.editions e ON e.id = t.edition_id WHERE e.slug = $1 ORDER BY t.team_name`, [config.edition]),
     ]);
@@ -170,7 +170,8 @@ export function publicRoutes(db, config) {
         rulebookVersion: form.rulebook_version,
       } : games.get(form.slug);
       games.set(form.slug, {
-        open: Boolean(config.registrationEnabled && form.in_window && hasRulebook && supported(form) && institutions.rows.length),
+        open: Boolean(config.registrationEnabled && form.in_window && hasRulebook && supported(form) &&
+          (config.acceptAnyUniversity || institutions.rows.length)),
         opensAt: form.registration_opens_at, closesAt: form.registration_closes_at,
         formId: form.form_id, starters: supported(form) ? form.max_starters : null, substitutes: supported(form) ? form.max_substitutes : null,
         fee: form.fee_lkr, bankInstructions: form.bank_instructions,
@@ -238,19 +239,33 @@ export function publicRoutes(db, config) {
     try {
       await new Promise((resolve, reject) => upload(req, res, error => error ? reject(error) : resolve()));
       const values = req.body ?? {};
-      if (!isUuid(values.requestId) || !isUuid(values.formId) || !isUuid(values.university) || values.rulesAccepted !== 'true') {
-        throw new HttpError(400, 'Select a university and accept the rulebook and privacy notice before submitting.');
+      if (!isUuid(values.requestId) || !isUuid(values.formId) || values.rulesAccepted !== 'true') {
+        throw new HttpError(400, 'Accept the rulebook and privacy notice before submitting.');
       }
+      const university = config.acceptAnyUniversity ? text(values.university, 'University name', 120) : values.university;
+      if (!config.acceptAnyUniversity && !isUuid(university)) throw new HttpError(400, 'Select a university from the list.');
       const { rows: [form] } = await db.query(`${FORM_SELECT}
         JOIN trinity.registration_forms f ON f.edition_game_id = eg.id ${FORM_NOTICE}
         WHERE e.slug = $1 AND g.slug = $2 AND f.id = $3 AND ${FORM_SUPPORTED}`, [config.edition, req.params.game, values.formId]);
       if (!supported(form) || !(form.has_rulebook || formRulebook(config.edition, form))) {
         throw new HttpError(409, 'This registration form is unavailable. Reopen registration for the current form.');
       }
-      const { rowCount: institutionCount, rows } = await db.query('SELECT id FROM trinity.institutions WHERE id = $1', [values.university]);
-      if (!(institutionCount ?? rows.length)) throw new HttpError(400, 'Select a university from the list.');
+      if (!config.acceptAnyUniversity) {
+        const { rows } = await db.query('SELECT id FROM trinity.institutions WHERE id = $1', [university]);
+        if (!rows.length) throw new HttpError(400, 'Select a university from the list.');
+      }
       const { media, payload } = await registrationPayload(values, req.files ?? [], form);
       const reference = await transaction(db, async client => {
+        let institutionId = university;
+        if (config.acceptAnyUniversity) {
+          const { rows: [created] } = await client.query(`
+            INSERT INTO trinity.institutions(name) VALUES ($1)
+            ON CONFLICT DO NOTHING RETURNING id`, [university]);
+          const institution = created ?? (await client.query(`
+            SELECT id FROM trinity.institutions WHERE lower(btrim(name)) = lower(btrim($1))`, [university])).rows[0];
+          institutionId = institution.id;
+        }
+        for (const player of payload.players) player.institution_id = institutionId;
         const { rows: [{ id }] } = await client.query('SELECT trinity.submit_registration($1, $2::jsonb) AS id',
           [values.requestId, JSON.stringify(payload)]);
         for (const file of media) {
@@ -259,7 +274,8 @@ export function publicRoutes(db, config) {
         }
         return id;
       });
-      res.status(201).json({ reference });
+      const confirmationEmailQueued = config.receiptEmailEnabled !== false && Boolean(config.smtpUrl && config.receiptFrom);
+      res.status(201).json({ reference, confirmationEmailQueued });
     } catch (error) {
       if (error.code === '23505') throw new HttpError(409, 'One or more players already have an active registration for this edition.');
       if (error.code === '55000') throw new HttpError(409, 'Registration is closed for this game.');

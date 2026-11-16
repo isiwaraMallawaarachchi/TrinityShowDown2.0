@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { contacts, event, games, previewTeams } from '../../content/event.js';
-import { countdownAt, deadlineTime, formatEventTime, millisecondsPerMinute } from '../../shared/countdown.js';
+import { countdownAt, deadlineTime, formatEventDate, formatEventTime, millisecondsPerMinute } from '../../shared/countdown.js';
 import { perPersonFee, registrationFeeLabel, registrationId, teamRules, teamSizeSummary } from '../registration/registration.js';
 import DownloadIcon from '../../shared/DownloadIcon.jsx';
 import GameArtwork from '../../shared/GameArtwork.jsx';
@@ -194,7 +194,8 @@ function TournamentTimeline({ reduced, schedule }) {
         <div className="timeline-milestone">
           <h3>{milestone.title}</h3>
           <p className="timeline-date">{dates[milestone.id]
-            ? <time dateTime={dates[milestone.id]}>{formatEventTime(dates[milestone.id])}</time>
+            ? <time dateTime={dates[milestone.id]}>{milestone.id === 'registration-opens'
+              ? formatEventDate(dates[milestone.id]) : formatEventTime(dates[milestone.id])}</time>
             : milestone.id === 'tournament-day' ? event.date : 'To be announced'}</p>
           <p>{milestone.description}</p>
         </div>

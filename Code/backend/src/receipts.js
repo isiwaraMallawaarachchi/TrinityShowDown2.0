@@ -1,8 +1,8 @@
 import nodemailer from 'nodemailer';
 import { transaction } from './database.js';
 
-export function startReceipts(db, { smtpUrl, receiptFrom, origin, production }) {
-  if (!smtpUrl || !receiptFrom) return async () => {};
+export function startReceipts(db, { receiptEmailEnabled, smtpUrl, receiptFrom, origin, production }) {
+  if (receiptEmailEnabled === false || !smtpUrl || !receiptFrom) return async () => {};
   const server = new URL(smtpUrl);
   if (!['smtp:', 'smtps:'].includes(server.protocol)) throw new Error('SMTP_URL must use smtp:// or smtps://.');
   const secure = server.protocol === 'smtps:';

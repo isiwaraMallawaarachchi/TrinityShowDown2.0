@@ -205,7 +205,13 @@ test('captain and organizer APIs share durable, private submissions and publish 
   assert.equal((await request(detailsPath + '/images/proof', { authenticated: true })).status, 200);
   assert.equal((await request('public/registrations/pubg-mobile', { body: team('pubg-mobile') })).status, 201);
 
+  config.acceptAnyUniversity = true;
+  config.receiptEmailEnabled = false;
+  const openToAnyone = await (await request('public/event')).json();
+  assert.deepEqual(openToAnyone.institutions, []);
+  assert.equal(openToAnyone.games['clash-of-clans'].open, true);
   const coc = team('clash-of-clans');
+  coc.set('university', '  Another University  ');
   for (const key of coc.keys()) {
     if (key.endsWith('.studentId')) coc.set(key, 'coc-' + coc.get(key));
   }
@@ -223,13 +229,18 @@ test('captain and organizer APIs share durable, private submissions and publish 
   coc.set('sub-2.townHallLevel', '021');
   const cocSubmission = await request('public/registrations/clash-of-clans', { body: coc });
   assert.equal(cocSubmission.status, 201, await cocSubmission.clone().text());
-  const { reference: cocReference } = await cocSubmission.json();
+  const { reference: cocReference, confirmationEmailQueued } = await cocSubmission.json();
+  assert.equal(confirmationEmailQueued, false);
   const cocDetails = await request('organizer/registrations/' + cocReference, { authenticated: true });
   assert.equal(cocDetails.status, 200);
   const cocEntry = await cocDetails.json();
   assert.deepEqual(cocEntry.entry_fields, {});
   assert.deepEqual(cocEntry.players.map(player => player.fields.townHallLevel), levels);
+  assert.ok(cocEntry.players.every(player => player.university === 'Another University'));
+  coc.set('university', 'ANOTHER UNIVERSITY');
   assert.equal((await (await request('public/registrations/clash-of-clans', { body: coc })).json()).reference, cocReference);
+  assert.equal((await db.query('SELECT count(*)::int AS count FROM trinity.institutions')).rows[0].count, 2);
+  config.acceptAnyUniversity = false;
 
   const exported = await request('organizer/registrations/export.csv', { authenticated: true });
   const csv = await exported.text();
@@ -258,9 +269,14 @@ test('captain and organizer APIs share durable, private submissions and publish 
   assert.equal((await db.query("SELECT count(*)::int AS count FROM trinity.organizer_audit WHERE organizer_id = $1 AND action = 'export'", [organizer])).rows[0].count, 1);
 
   const sink = await localMailSink();
-  const stop = startReceipts(apiDb, {
+  const mail = {
     origin, smtpUrl: 'smtp://127.0.0.1:' + sink.server.address().port, receiptFrom: 'receipts@example.com',
-  });
+  };
+  const stopPaused = startReceipts({ connect: () => assert.fail('Paused receipts must leave the queue untouched') },
+    { ...mail, receiptEmailEnabled: false });
+  await stopPaused();
+  assert.equal(sink.messages.length, 0);
+  const stop = startReceipts(apiDb, mail);
   try {
     const deadline = Date.now() + 5000;
     let sent = 0;

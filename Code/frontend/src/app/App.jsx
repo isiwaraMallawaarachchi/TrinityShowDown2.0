@@ -115,7 +115,7 @@ export default function App() {
     return values.length === 1 ? values[0] : null;
   };
   const schedule = {
-    opensAt: sharedDate('opensAt'),
+    opensAt: gameWindows.length ? sharedDate('opensAt') : event.registrationOpensAt,
     closesAt: gameWindows.length ? sharedDate('closesAt') : event.registrationClosesAt,
     startsAt: eventData?.edition?.startsAt,
   };

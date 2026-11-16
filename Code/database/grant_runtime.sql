@@ -10,6 +10,7 @@ GRANT EXECUTE ON FUNCTION trinity.decide_registration(
 
 GRANT INSERT ON trinity.organizers, trinity.organizer_invites, trinity.organizer_sessions,
     trinity.organizer_audit, trinity.media TO :"runtime_role";
+GRANT INSERT (name) ON trinity.institutions TO :"runtime_role";
 GRANT UPDATE (password_hash, disabled_at) ON trinity.organizers TO :"runtime_role";
 GRANT UPDATE (accepted_by, accepted_at) ON trinity.organizer_invites TO :"runtime_role";
 GRANT DELETE ON trinity.organizer_sessions TO :"runtime_role";
