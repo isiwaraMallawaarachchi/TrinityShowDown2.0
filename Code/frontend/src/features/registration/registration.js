@@ -13,7 +13,7 @@ const feeAmount = 250;
 export const perPersonFee = {
   amount: feeAmount,
   label: `Rs. ${feeAmount} per person`,
-  games: ['cod-mobile', 'pubg-mobile', 'mlbb'],
+  games: ['cod-mobile', 'pubg-mobile', 'mlbb', 'clash-of-clans'],
 };
 
 export function registrationFeeLabel(gameId, publishedFee) {
