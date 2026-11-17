@@ -327,6 +327,7 @@
 .game-facts dt, .registration-facts dt { font-size: 10px; letter-spacing: .11em; text-transform: uppercase; font-weight: 750; }
 .game-facts dt { color: var(--muted); }
 .game-facts dd { margin-top: 4px; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+.game-slot-count small { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
 .game-facts > .game-fact-fee { background: var(--surface-tint); }
 .game-fact-fee dd { color: var(--accent); font-weight: 750; }
 .guide-link { display: inline-flex; align-items: center; gap: 8px; color: var(--accent); border-bottom: 1px solid var(--control-line); font-size: 13px; font-weight: 750; padding-block: 6px; }

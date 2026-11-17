@@ -46,14 +46,15 @@ export const games = [
 ];
 
 export const event = {
-  date: 'To be announced',
-  venue: 'To be announced',
+  startsAt: '2026-12-19T09:00:00+05:30',
+  endsAt: '2026-12-19T18:00:00+05:30',
+  venue: 'University of Moratuwa',
   registrationOpensAt: '2026-11-16T00:00:00+05:30',
   registrationClosesAt: '2026-12-06T23:59:00+05:30',
   milestones: [
     { id: 'registration-opens', title: 'Registration opens', description: 'Choose a game and prepare your team entry.' },
     { id: 'registration-closes', title: 'Registration closes', description: 'Submit your final player list and payment proof before the deadline.' },
-    { id: 'tournament-day', title: 'Tournament day', description: 'The schedule and venue will be announced here.' },
+    { id: 'tournament-day', title: 'Tournament day' },
   ],
 };
 

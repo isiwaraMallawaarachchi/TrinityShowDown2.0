@@ -1,9 +1,8 @@
-import { event } from '../../content/event.js';
 import { RegistrationClock } from '../guide/TournamentGuide.jsx';
 import { registrationId } from '../registration/registration.js';
 import { AmbientField } from '../../shared/motion.jsx';
 import GameArtwork from '../../shared/GameArtwork.jsx';
-import { formatEventTime } from '../../shared/countdown.js';
+import { formatEventDate } from '../../shared/countdown.js';
 import SceneVideo from './SceneVideo.jsx';
 
 const art = import.meta.env.BASE_URL + 'art/';
@@ -41,8 +40,10 @@ export default function WorldChapter({ chapter, logo, active, warm, visible, var
           <a className="portal-button" href="#register" onClick={(e) => { e.preventDefault(); navigate('register'); }}>Register now</a>
           <a className="portal-button portal-quiet" href="#cod-mobile" onClick={(e) => { e.preventDefault(); navigate('cod-mobile'); }}>View games</a>
         </div>
-        <p className="hero-meta"><span>Four games</span><i /><span>{schedule.startsAt ? formatEventTime(schedule.startsAt) :
-          event.date === 'To be announced' ? 'Event date to be announced' : event.date}</span></p>
+        <p className="hero-meta">
+          <time dateTime={schedule.startsAt}>{formatEventDate(schedule.startsAt)}</time>
+          <i aria-hidden="true" /><span>{schedule.venue}</span>
+        </p>
       </div>
     </div> : <div className="chapter-composition game-composition">
       <h2 className="chapter-title" id={'title-' + chapter.id}><span>{chapter.art === 'coc' ? chapter.name : <>

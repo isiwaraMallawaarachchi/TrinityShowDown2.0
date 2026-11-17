@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { countdownAt, deadlineTime, formatEventDate } from '../src/shared/countdown.js';
+import { countdownAt, deadlineTime, formatEventClock, formatEventDate } from '../src/shared/countdown.js';
 
 test('an unconfirmed or ambiguous deadline leaves the countdown pending', () => {
   for (const value of [undefined, null, '', '2027-02-28T23:59:00', 'not a date']) {
@@ -17,6 +17,12 @@ test('a Sri Lanka deadline counts days, hours and minutes from any locale', () =
 
 test('the opening date uses the Sri Lankan calendar day even when UTC is a day behind', () => {
   assert.equal(formatEventDate('2026-11-15T18:30:00Z'), '16 November 2026');
+});
+
+test('tournament hours use the Sri Lankan clock for database timestamps', () => {
+  assert.equal(formatEventClock('2026-12-19T03:30:00.000Z'), '9 AM');
+  assert.equal(formatEventClock('2026-12-19T12:30:00.000Z'), '6 PM');
+  assert.equal(formatEventClock('2026-12-19T04:00:00.000Z'), '9:30 AM');
 });
 
 test('the countdown stops at zero at and after the deadline', () => {

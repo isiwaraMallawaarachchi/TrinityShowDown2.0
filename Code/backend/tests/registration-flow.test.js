@@ -76,7 +76,8 @@ test('captain and organizer APIs share durable, private submissions and publish 
     INSERT INTO trinity.organizers(email, display_name, password_hash)
     VALUES ('organizer@example.com', 'Test Organizer', $1) RETURNING id`, [await hashPassword('synthetic-password-1')]);
   await db.exec(`
-    INSERT INTO trinity.editions(slug, title) VALUES ('trinity-showdown', 'Test edition');
+    INSERT INTO trinity.editions(slug, title, event_starts_at, event_ends_at, venue)
+      VALUES ('trinity-showdown', 'Test edition', '2026-12-19T09:00:00+05:30', '2026-12-19T18:00:00+05:30', 'Test venue');
     INSERT INTO trinity.privacy_notices(version, body) VALUES ('test', 'Synthetic notice');
     INSERT INTO trinity.media(key, content_type, bytes) VALUES ('rules/test', 'application/pdf', convert_to('%PDF-1.4', 'UTF8'));
     INSERT INTO trinity.edition_games(edition_id, game_id, display_order, registration_opens_at, registration_closes_at)
@@ -138,6 +139,9 @@ test('captain and organizer APIs share durable, private submissions and publish 
   }
 
   const event = await (await request('public/event')).json();
+  assert.deepEqual(event.edition, {
+    startsAt: '2026-12-19T03:30:00.000Z', endsAt: '2026-12-19T12:30:00.000Z', venue: 'Test venue',
+  });
   assert.equal(event.games['cod-mobile'].open, true);
   assert.equal(await (await fetch(origin + event.games['cod-mobile'].rulebookUrl)).text(), '%PDF-1.4');
   const cocRulebook = event.games['clash-of-clans'];
@@ -178,6 +182,7 @@ test('captain and organizer APIs share durable, private submissions and publish 
   const retry = await request('public/registrations/cod-mobile', { body: data });
   assert.equal((await retry.json()).reference, reference);
   assert.equal((await request('public/registrations/pubg-mobile', { body: team('pubg-mobile') })).status, 409);
+  assert.deepEqual((await (await request('public/event')).json()).teams, []);
   assert.equal((await request(`public/teams/${reference}/logo`)).status, 404);
   assert.equal((await request(`organizer/registrations/${reference}/images/proof`)).status, 401);
   assert.equal((await db.query('SELECT count(*)::int AS count FROM trinity.receipt_outbox')).rows[0].count, 1);
@@ -196,11 +201,14 @@ test('captain and organizer APIs share durable, private submissions and publish 
   assert.equal((await decide({ expectedStatus: 'submitted', decision: 'approved' })).status, 400);
   assert.equal((await decide({ expectedStatus: 'submitted', decision: 'approved', paymentVerified: true })).status, 200);
   const published = (await (await request('public/event')).json()).teams;
+  assert.equal(published.length, 1);
   assert.deepEqual(Object.keys(published[0]).sort(), ['gameId', 'id', 'logoUrl', 'name']);
   assert.equal(published[0].id, reference);
+  assert.equal(published[0].gameId, 'cod-mobile');
   assert.equal((await request(`public/teams/${reference}/logo`)).headers.get('content-type'), 'image/webp');
   assert.equal((await decide({ expectedStatus: 'submitted', decision: 'rejected', reason: 'Test review' })).status, 409);
   assert.equal((await decide({ expectedStatus: 'approved', decision: 'rejected', reason: 'Test review' })).status, 200);
+  assert.deepEqual((await (await request('public/event')).json()).teams, []);
   assert.equal((await request(`public/teams/${reference}/logo`)).status, 404);
   assert.equal((await request(detailsPath + '/images/proof', { authenticated: true })).status, 200);
   assert.equal((await request('public/registrations/pubg-mobile', { body: team('pubg-mobile') })).status, 201);

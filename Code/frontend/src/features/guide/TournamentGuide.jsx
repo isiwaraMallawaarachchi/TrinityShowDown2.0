@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { contacts, event, games, previewTeams } from '../../content/event.js';
-import { countdownAt, deadlineTime, formatEventDate, formatEventTime, millisecondsPerMinute } from '../../shared/countdown.js';
+import { countdownAt, deadlineTime, formatEventClock, formatEventDate, formatEventTime, millisecondsPerMinute } from '../../shared/countdown.js';
 import { perPersonFee, registrationFeeLabel, registrationId, teamRules, teamSizeSummary } from '../registration/registration.js';
 import DownloadIcon from '../../shared/DownloadIcon.jsx';
 import GameArtwork from '../../shared/GameArtwork.jsx';
@@ -194,10 +194,17 @@ function TournamentTimeline({ reduced, schedule }) {
         <div className="timeline-milestone">
           <h3>{milestone.title}</h3>
           <p className="timeline-date">{dates[milestone.id]
-            ? <time dateTime={dates[milestone.id]}>{milestone.id === 'registration-opens'
-              ? formatEventDate(dates[milestone.id]) : formatEventTime(dates[milestone.id])}</time>
-            : milestone.id === 'tournament-day' ? event.date : 'To be announced'}</p>
-          <p>{milestone.description}</p>
+            ? <time dateTime={dates[milestone.id]}>{milestone.id === 'registration-closes'
+              ? formatEventTime(dates[milestone.id]) : formatEventDate(dates[milestone.id])}</time>
+            : 'To be announced'}</p>
+          {milestone.id === 'tournament-day' ? <>
+            <p>{schedule.venue}</p>
+            <p>
+              <time dateTime={schedule.startsAt}>{formatEventClock(schedule.startsAt)}</time>
+              {schedule.endsAt && <> – <time dateTime={schedule.endsAt}>{formatEventClock(schedule.endsAt)}</time></>}
+              {' · Sri Lanka time'}
+            </p>
+          </> : <p>{milestone.description}</p>}
         </div>
       </li>)}
     </ol>
@@ -215,7 +222,7 @@ function About() {
   </section>;
 }
 
-function GameDetails({ selected, onSelect, onNavigate, gameSettings }) {
+function GameDetails({ selected, onSelect, onNavigate, gameSettings, publishedTeams }) {
   const index = Math.max(0, games.findIndex((game) => game.id === selected));
   function handleKeys(e) {
     const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
@@ -240,11 +247,12 @@ function GameDetails({ selected, onSelect, onNavigate, gameSettings }) {
       </button>)}
     </div>
     {games.map((game, i) => <GamePanel key={game.id} game={game} settings={gameSettings?.[game.id]}
-      active={i === index} onNavigate={onNavigate} />)}
+      publishedTeams={publishedTeams} active={i === index} onNavigate={onNavigate} />)}
   </section>;
 }
 
-function GamePanel({ game, settings, active, onNavigate }) {
+function GamePanel({ game, settings, publishedTeams, active, onNavigate }) {
+  const approvedCount = publishedTeams?.filter((team) => team.gameId === game.id).length;
   return <div className="game-details" role="tabpanel" aria-labelledby={'game-tab-' + game.id}
       id={'game-panel-' + game.id} tabIndex={0} hidden={!active}>
       <figure className="editorial-image"><GameArtwork game={game} /></figure>
@@ -257,8 +265,11 @@ function GamePanel({ game, settings, active, onNavigate }) {
               (teamRules[game.id].provisional ? 'Provisional · ' : '') + teamSizeSummary(game.id)}</dd>
           </div>
           <div>
-            <dt>Team slots</dt>
-            <dd>{game.teamSlots}</dd>
+            <dt>Available team slots</dt>
+            <dd className="game-slot-count" aria-live="polite" aria-atomic="true">
+              {approvedCount === undefined ? 'Awaiting live count' : Math.max(0, game.teamSlots - approvedCount)}
+              <small>{approvedCount === undefined ? `${game.teamSlots} total slots` : `${approvedCount} of ${game.teamSlots} filled`}</small>
+            </dd>
           </div>
           <div>
             <dt>Prize pool</dt>
@@ -511,7 +522,8 @@ export default function TournamentGuide({ guideRef, active, selectedGame, onGame
     <AmbientField scene="guide" active={active} />
     <PrizePool active={active} reduced={reduced} />
     <TournamentTimeline reduced={reduced} schedule={schedule} />
-    <GameDetails selected={selectedGame} onSelect={onGame} onNavigate={onNavigate} gameSettings={gameSettings} />
+    <GameDetails selected={selectedGame} onSelect={onGame} onNavigate={onNavigate}
+      gameSettings={gameSettings} publishedTeams={eventData?.teams} />
     <TeamLineup reduced={reduced} onNavigate={onNavigate} publishedTeams={eventData?.teams} />
     <Rules />
     <Rulebooks gameSettings={gameSettings} />
