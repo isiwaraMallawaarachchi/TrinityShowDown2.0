@@ -10,6 +10,7 @@ export function deadlineTime(value) {
 const dateOptions = { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Colombo' };
 const eventDate = new Intl.DateTimeFormat('en-GB', dateOptions);
 const eventTime = new Intl.DateTimeFormat('en-GB', { ...dateOptions, hour: 'numeric', minute: '2-digit' });
+const eventClock = new Intl.DateTimeFormat('en-US', { timeZone: dateOptions.timeZone, hour: 'numeric', minute: '2-digit' });
 
 export function formatEventDate(value) {
   const time = deadlineTime(value);
@@ -19,6 +20,11 @@ export function formatEventDate(value) {
 export function formatEventTime(value) {
   const time = deadlineTime(value);
   return time === null ? 'To be announced' : eventTime.format(time);
+}
+
+export function formatEventClock(value) {
+  const time = deadlineTime(value);
+  return time === null ? 'To be announced' : eventClock.format(time).replace(':00', '');
 }
 
 export function countdownAt(deadline, now) {

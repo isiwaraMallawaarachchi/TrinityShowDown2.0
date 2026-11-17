@@ -99,7 +99,8 @@
   line-height: 1.4;
 }
 .entry-payment-total small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; font-weight: 500; }
-.entry-payment-total dd { margin: 0; color: var(--accent); font-size: clamp(19px, 3vw, 25px); font-weight: 800; white-space: nowrap; }
+.entry-payment-total dd { margin: 0; color: var(--accent); font-size: clamp(19px, 3vw, 25px); font-weight: 800; text-align: end; }
+.entry-payment-total dd small { color: inherit; font-weight: 700; }
 .entry-payment-note { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 13px; line-height: 1.5; }
 .entry-receipt strong { overflow-wrap: anywhere; }
 .entry-submit-error { color: var(--ink); border-left: 3px solid #c96c62; padding-left: 10px; }

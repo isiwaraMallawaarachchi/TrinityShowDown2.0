@@ -114,10 +114,13 @@ export default function App() {
     const values = [...new Set(gameWindows.map(settings => settings[key]))];
     return values.length === 1 ? values[0] : null;
   };
+  const edition = eventData?.edition;
   const schedule = {
     opensAt: gameWindows.length ? sharedDate('opensAt') : event.registrationOpensAt,
     closesAt: gameWindows.length ? sharedDate('closesAt') : event.registrationClosesAt,
-    startsAt: eventData?.edition?.startsAt,
+    startsAt: edition?.startsAt ?? event.startsAt,
+    endsAt: edition?.startsAt ? edition.endsAt : event.endsAt,
+    venue: edition?.venue || event.venue,
   };
   const headerExpanded = active > 0 || inGuide;
   const worldClasses = 'world-stage' + (touchJourney ? ' is-touch-journey' : '') +

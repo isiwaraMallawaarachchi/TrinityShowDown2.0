@@ -155,7 +155,8 @@ export function publicRoutes(db, config) {
   let activeUploads = 0;
   router.get('/event', async (_req, res) => {
     const [edition, forms, institutions, teams] = await Promise.all([
-      db.query('SELECT event_starts_at AS "startsAt", venue FROM trinity.editions WHERE slug = $1', [config.edition]),
+      db.query(`SELECT event_starts_at AS "startsAt", event_ends_at AS "endsAt", venue
+        FROM trinity.editions WHERE slug = $1`, [config.edition]),
       db.query(`${FORM_SELECT} LEFT JOIN trinity.registration_forms f ON f.id = eg.active_form_id
         ${FORM_NOTICE} WHERE e.slug = $1 ORDER BY eg.display_order`, [config.edition]),
       config.acceptAnyUniversity ? { rows: [] } : db.query('SELECT id, name FROM trinity.institutions ORDER BY name'),
