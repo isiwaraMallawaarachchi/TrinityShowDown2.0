@@ -75,7 +75,7 @@ function PlayerFields({ slot, idLabel, needsTownHallLevel, disabled = false }) {
   </fieldset>;
 }
 
-function PaymentDetails({ gameId, settings, starters }) {
+function PaymentDetails({ gameId, settings, rules }) {
   const bankInstructions = settings?.bankInstructions?.trim().replace(/\r\n/g, '\n');
   const customInstructions = bankInstructions && bankInstructions !== trinityBankInstructions &&
     bankInstructions !== 'Add the approved bank transfer instructions.';
@@ -90,8 +90,11 @@ function PaymentDetails({ gameId, settings, starters }) {
       <div className="entry-payment-fee"><dt>Registration fee</dt><dd>{registrationFeeLabel(gameId, settings?.fee)}</dd></div>
     </dl>
     {perPersonFee.games.includes(gameId) && <dl className="entry-payment-total">
-      <dt>Total for starters <small>{starters} starters at Rs. {perPersonFee.amount} each</small></dt>
-      <dd>Rs. {(starters * perPersonFee.amount).toLocaleString('en-LK')}</dd>
+      <dt>Team registration fee <small>{teamSizeSummary(gameId, rules)}</small></dt>
+      <dd>
+        Rs. {(rules.starters * perPersonFee.amount).toLocaleString('en-LK')}
+        {rules.substitutes > 0 && <small>+ Rs. {perPersonFee.amount} per substitute</small>}
+      </dd>
     </dl>}
     <p className="entry-payment-note">The team leader must complete this form and upload proof of payment.</p>
   </section>;
@@ -203,7 +206,7 @@ function RegistrationForm({ game, settings, institutions }) {
           {settings.formId && <p>The team name, logo and game will be public if the organizers approve the entry.</p>}
         </div>}
       </div>}
-      <PaymentDetails gameId={game.id} settings={settings} starters={rules.starters} />
+      <PaymentDetails gameId={game.id} settings={settings} rules={rules} />
       <div className="entry-grid">
         <TextField label="Team name" name="teamName" maxLength={100} />
         {settings?.formId && institutions.length ? <label className="entry-field">
