@@ -18,7 +18,7 @@ export const games = [
     title: ['PUBG', 'Mobile'],
     genre: 'Battle royale',
     teamSlots: 20,
-    format: 'Knockout',
+    format: 'Battle Royale',
     teaser: 'Pick your drop. Hold your ground. Make the last circle count.',
   },
   {
