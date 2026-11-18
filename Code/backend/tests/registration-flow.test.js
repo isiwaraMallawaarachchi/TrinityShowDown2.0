@@ -54,10 +54,12 @@ test('bundled rulebooks can be downloaded before registration is configured', as
   assert.deepEqual(Object.keys(games).sort(), ['clash-of-clans', 'cod-mobile', 'mlbb', 'pubg-mobile']);
   for (const [game, settings] of Object.entries(games)) {
     assert.equal(settings.open, false);
+    const expectedVersion = game === 'mlbb' ? '2' : '1';
+    assert.equal(settings.rulebookVersion, expectedVersion);
     const pdf = await fetch(origin + settings.rulebookUrl, { headers: { Range: 'bytes=0-4' } });
     assert.equal(pdf.status, 206);
     assert.equal(pdf.headers.get('content-type'), 'application/pdf');
-    assert.equal(pdf.headers.get('content-disposition').replaceAll('"', ''), `attachment; filename=${game}-v1.pdf`);
+    assert.equal(pdf.headers.get('content-disposition').replaceAll('"', ''), `attachment; filename=${game}-v${expectedVersion}.pdf`);
     assert.equal(await pdf.text(), '%PDF-');
   }
   const unavailable = await fetch(origin + '/api/public/rulebooks/files/cod-mobile/2');
@@ -84,14 +86,16 @@ test('captain and organizer APIs share durable, private submissions and publish 
       SELECT e.id, g.id, g.id, now() - interval '1 hour', now() + interval '1 hour'
       FROM trinity.editions e CROSS JOIN trinity.games g;
   `);
-  const bundled = bundledRulebook('trinity-showdown', 'clash-of-clans', '1');
+  const cocPdf = bundledRulebook('trinity-showdown', 'clash-of-clans', '1');
+  const mlbbPdf = bundledRulebook('trinity-showdown', 'mlbb', '1');
   await db.query(`
     INSERT INTO trinity.registration_forms(edition_game_id, version, privacy_notice_id, rulebook_version, rulebook_key,
       fee_lkr, bank_instructions, min_starters, max_starters, min_substitutes, max_substitutes)
-      SELECT eg.id, 1, n.id, CASE WHEN g.slug = 'clash-of-clans' THEN '1' ELSE 'test' END,
-        CASE WHEN g.slug = 'clash-of-clans' THEN $1 ELSE 'rules/test' END, 100, 'Synthetic bank instructions', 5, 5, 0, 2
+      SELECT eg.id, 1, n.id, CASE WHEN g.slug IN ('clash-of-clans', 'mlbb') THEN '1' ELSE 'test' END,
+        CASE g.slug WHEN 'clash-of-clans' THEN $1 WHEN 'mlbb' THEN $2 ELSE 'rules/test' END,
+        100, 'Synthetic bank instructions', 5, 5, 0, 2
       FROM trinity.edition_games eg JOIN trinity.games g ON eg.game_id = g.id CROSS JOIN trinity.privacy_notices n;
-  `, [bundled.key]);
+  `, [cocPdf.key, mlbbPdf.key]);
   await db.exec(`
     UPDATE trinity.edition_games eg SET active_form_id = f.id FROM trinity.registration_forms f
       WHERE f.edition_game_id = eg.id;
@@ -151,6 +155,39 @@ test('captain and organizer APIs share durable, private submissions and publish 
   assert.equal(bundledPdf.status, 206);
   assert.equal(bundledPdf.headers.get('content-disposition').replaceAll('"', ''), 'attachment; filename=clash-of-clans-v1.pdf');
   assert.equal(await bundledPdf.text(), '%PDF-');
+
+  await t.test('publishing the new Mobile Legends rulebook preserves old forms and does not change other games', async () => {
+    const publish = await readFile(new URL('../../database/publish_mlbb_rulebook_v2.sql', import.meta.url), 'utf8');
+    await db.exec('RESET ROLE');
+    await db.exec(publish);
+    await db.exec(publish);
+    await db.exec('SET ROLE trinity_test_api');
+
+    const updated = await (await request('public/event')).json();
+    const { mlbb: before, ...otherGames } = event.games;
+    const { mlbb: after, ...otherGamesAfter } = updated.games;
+    assert.deepEqual(otherGamesAfter, otherGames);
+    assert.equal(before.rulebookVersion, '1');
+    assert.equal(after.rulebookVersion, '2');
+    assert.notEqual(after.formId, before.formId);
+    assert.deepEqual(
+      { ...after, formId: before.formId, rulebookVersion: '1', rulebookUrl: before.rulebookUrl, privacyUrl: before.privacyUrl },
+      before,
+    );
+    const documents = await Promise.all([before, after].map(({ rulebookUrl }) =>
+      fetch(origin + rulebookUrl, { headers: { Range: 'bytes=0-4' } })));
+    for (const [index, pdf] of documents.entries()) {
+      assert.equal(pdf.status, 206);
+      assert.equal(pdf.headers.get('content-disposition').replaceAll('"', ''), `attachment; filename=mlbb-v${index + 1}.pdf`);
+      assert.equal(await pdf.text(), '%PDF-');
+    }
+    const { rows } = await db.query(`
+      SELECT version FROM trinity.registration_forms
+      WHERE edition_game_id = (SELECT edition_game_id FROM trinity.registration_forms WHERE id = $1)
+      ORDER BY version`, [after.formId]);
+    assert.deepEqual(rows.map(({ version }) => version), [1, 2]);
+  });
+
   const png = await sharp({ create: { width: 8, height: 8, channels: 3, background: '#123456' } }).png().toBuffer();
   const photo = new Blob([png], { type: 'image/png' });
   function team(game, requestId = randomUUID(), duplicate = false) {
