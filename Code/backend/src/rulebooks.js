@@ -4,7 +4,7 @@ const catalogue = new Map([
   ['trinity-showdown', new Map([
     ['cod-mobile', ['1']],
     ['pubg-mobile', ['1']],
-    ['mlbb', ['1']],
+    ['mlbb', ['1', '2']],
     ['clash-of-clans', ['1']],
   ])],
 ]);
