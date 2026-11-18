@@ -5,6 +5,7 @@ import DownloadIcon from '../../shared/DownloadIcon.jsx';
 import { AmbientField } from '../../shared/motion.jsx';
 import { submitRegistration } from '../../shared/api.js';
 import { formatEventTime } from '../../shared/countdown.js';
+import { prepareRegistrationImages } from './upload-images.js';
 import './event-panel.css';
 
 const imageTypes = ['image/jpeg', 'image/png', 'image/webp'];
@@ -108,16 +109,20 @@ function RegistrationForm({ game, settings, institutions }) {
   const [substitutes, setSubstitutes] = useState({});
   const [review, setReview] = useState(null);
   const [accepted, setAccepted] = useState(false);
-  const [sending, setSending] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
+  const sending = Boolean(uploadStatus);
   const [submitError, setSubmitError] = useState('');
   const [receipt, setReceipt] = useState(null);
   const requestId = useRef(null);
-  const inFlight = useRef(false);
+  const preparedData = useRef(null);
+  const uploadController = useRef(null);
   const form = useRef(null);
   const stepHeading = useRef(null);
   const pendingFocus = useRef(null);
   const idLabel = rules.playerIdLabel ?? 'In-game ID';
   const needsTownHallLevel = requiresTownHallLevel(game.id);
+
+  useEffect(() => () => uploadController.current?.abort(), []);
 
   useEffect(() => {
     const target = pendingFocus.current;
@@ -153,25 +158,32 @@ function RegistrationForm({ game, settings, institutions }) {
       goToStep(step + 1, 'heading');
       return;
     }
-    if (!settings?.open || !accepted || inFlight.current || receipt) return;
+    if (!settings?.open || !accepted || uploadController.current || receipt) return;
     const result = checkEntry(form.current, slots);
     setReview(result);
     if (!result.entry) return;
-    inFlight.current = true;
-    setSending(true);
+    const controller = new AbortController();
+    uploadController.current = controller;
+    setUploadStatus('Preparing images…');
     setSubmitError('');
     try {
-      requestId.current ??= crypto.randomUUID();
-      const data = new FormData(form.current);
-      data.set('requestId', requestId.current);
-      data.set('formId', settings.formId);
-      data.set('rulesAccepted', 'true');
-      setReceipt(await submitRegistration(game.id, data));
+      if (!preparedData.current) {
+        requestId.current ??= crypto.randomUUID();
+        const data = new FormData(form.current);
+        data.set('requestId', requestId.current);
+        data.set('formId', settings.formId);
+        data.set('rulesAccepted', 'true');
+        await prepareRegistrationImages(data, controller.signal);
+        preparedData.current = data;
+      }
+      setReceipt(await submitRegistration(game.id, preparedData.current, {
+        signal: controller.signal, onStatus: setUploadStatus,
+      }));
     } catch (error) {
-      setSubmitError(error.message);
+      if (!controller.signal.aborted) setSubmitError(error.message);
     } finally {
-      inFlight.current = false;
-      setSending(false);
+      uploadController.current = null;
+      if (!controller.signal.aborted) setUploadStatus('');
     }
   }
 
@@ -183,7 +195,8 @@ function RegistrationForm({ game, settings, institutions }) {
     <p>Reference <strong>{receipt.reference}</strong></p>
   </section>;
 
-  return <form ref={form} className="entry-form" noValidate onSubmit={next} autoComplete="off">
+  return <form ref={form} className="entry-form" noValidate onSubmit={next} autoComplete="off"
+    onChange={(e) => { if (e.target.name) preparedData.current = null; }}>
     <fieldset className="entry-fields" disabled={sending}>
     <div className="entry-steps" role="tablist" aria-label="Registration steps" onKeyDown={handleTabKeys}>
       {steps.map((label, index) => <button key={label} type="button" role="tab" id={'entry-tab-' + index}
@@ -231,7 +244,10 @@ function RegistrationForm({ game, settings, institutions }) {
       <p className="entry-help">Substitutes are optional. Add each substitute you want to include.</p>
       {slots.filter((slot) => slot.optional).map((slot) => <div key={slot.id} className="entry-substitute">
         <label className="entry-check"><input type="checkbox" checked={Boolean(substitutes[slot.id])}
-          onChange={(e) => setSubstitutes({ ...substitutes, [slot.id]: e.target.checked })} /> Include {slot.label.toLowerCase()}</label>
+          onChange={(e) => {
+            preparedData.current = null;
+            setSubstitutes({ ...substitutes, [slot.id]: e.target.checked });
+          }} /> Include {slot.label.toLowerCase()}</label>
         <div hidden={!substitutes[slot.id]}>
           <PlayerFields slot={slot} idLabel={idLabel} needsTownHallLevel={needsTownHallLevel} disabled={!substitutes[slot.id]} />
         </div>
@@ -264,6 +280,7 @@ function RegistrationForm({ game, settings, institutions }) {
       </label>}
       {submitError && <p className="entry-submit-error" role="alert">{submitError}</p>}
     </div>
+    {uploadStatus && <p className="entry-help" role="status">{uploadStatus}</p>}
     <div className="entry-actions">
       {step > 0 && <button type="button" className="entry-back" onClick={() => goToStep(step - 1, 'heading')}>Back</button>}
       {step < reviewStep && <button className="portal-button" type="submit">{step === reviewStep - 1 ? 'Review entry' : 'Continue'}</button>}
