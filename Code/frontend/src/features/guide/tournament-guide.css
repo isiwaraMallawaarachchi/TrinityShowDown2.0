@@ -392,8 +392,8 @@
 .rulebooks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(10px, 1.8vw, 18px); margin: 0; padding: 0; list-style: none; }
 .rulebook-card {
   display: grid; grid-template-columns: clamp(84px, 12vw, 150px) minmax(0, 1fr) auto;
-  align-items: center; height: 100%; min-height: clamp(86px, 10vw, 110px);
-  padding-inline-end: clamp(12px, 2vw, 22px);
+  align-items: center; width: 100%; height: 100%; min-height: clamp(86px, 10vw, 110px); text-align: left;
+  padding: 0 clamp(12px, 2vw, 22px) 0 0;
   border: 1px solid var(--rule); border-radius: 9px; overflow: clip; background: var(--surface);
   transition: transform .36s cubic-bezier(.22,1,.36,1), border-color .24s, background-color .24s, box-shadow .3s;
 }
@@ -416,7 +416,7 @@ a.rulebook-card .rulebook-status { color: var(--accent); }
   transition: color .24s, background-color .24s, border-color .24s;
 }
 .rulebook-icon svg { width: 18px; }
-a.rulebook-card:is(:hover, :focus-visible) {
+:is(a, button).rulebook-card:is(:hover, :focus-visible) {
   transform: translateY(-3px); border-color: var(--accent); background: var(--surface-tint);
   box-shadow: 0 9px 23px var(--ui-shadow);
 }
@@ -424,7 +424,7 @@ a.rulebook-card:is(:hover, :focus-visible) {
 .rulebook-card:hover .rulebook-icon {
   background: var(--surface-tint); border-color: var(--control-line);
 }
-a.rulebook-card:is(:hover, :focus-visible) .rulebook-icon {
+:is(a, button).rulebook-card:is(:hover, :focus-visible) .rulebook-icon {
   color: var(--on-accent); background: var(--accent); border-color: var(--accent);
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -435,7 +435,7 @@ a.rulebook-card:is(:hover, :focus-visible) .rulebook-icon {
   45% { transform: translateY(3px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  a.rulebook-card:is(:hover, :focus-visible),
+  :is(a, button).rulebook-card:is(:hover, :focus-visible),
   .rulebook-card:is(:hover, :focus-visible) .game-artwork { transform: none; }
 }
 .registration-section {
