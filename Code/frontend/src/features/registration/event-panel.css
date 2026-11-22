@@ -35,6 +35,8 @@
 .entry-requirements { margin-bottom: 18px; }
 .entry-rulebook {
   display: grid;
+  width: 100%;
+  text-align: left;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;

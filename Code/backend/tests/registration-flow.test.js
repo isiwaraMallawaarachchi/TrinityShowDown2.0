@@ -56,6 +56,15 @@ test('bundled rulebooks can be downloaded before registration is configured', as
     assert.equal(settings.open, false);
     const expectedVersion = game === 'mlbb' ? '2' : '1';
     assert.equal(settings.rulebookVersion, expectedVersion);
+    if (game === 'cod-mobile') {
+      assert.equal(settings.rulebookUrl, null);
+      assert.match(settings.rulebookNotice, /COD Mobile rulebook is getting an update/);
+      const paused = await fetch(origin + '/api/public/rulebooks/files/cod-mobile/1');
+      assert.equal(paused.status, 503);
+      assert.equal((await paused.json()).error, settings.rulebookNotice);
+      continue;
+    }
+    assert.equal(settings.rulebookNotice, null);
     const pdf = await fetch(origin + settings.rulebookUrl, { headers: { Range: 'bytes=0-4' } });
     assert.equal(pdf.status, 206);
     assert.equal(pdf.headers.get('content-type'), 'application/pdf');
@@ -147,7 +156,10 @@ test('captain and organizer APIs share durable, private submissions and publish 
     startsAt: '2026-12-19T03:30:00.000Z', endsAt: '2026-12-19T12:30:00.000Z', venue: 'Test venue',
   });
   assert.equal(event.games['cod-mobile'].open, true);
-  assert.equal(await (await fetch(origin + event.games['cod-mobile'].rulebookUrl)).text(), '%PDF-1.4');
+  assert.equal(event.games['cod-mobile'].rulebookUrl, null);
+  const pausedRulebook = await fetch(origin + '/api/public/rulebooks/' + event.games['cod-mobile'].formId);
+  assert.equal(pausedRulebook.status, 503);
+  assert.equal((await pausedRulebook.json()).error, event.games['cod-mobile'].rulebookNotice);
   const cocRulebook = event.games['clash-of-clans'];
   assert.equal(cocRulebook.open, true);
   assert.equal(cocRulebook.rulebookUrl, `/api/public/rulebooks/${cocRulebook.formId}`);

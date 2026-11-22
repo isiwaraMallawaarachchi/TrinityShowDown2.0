@@ -5,6 +5,8 @@ import { perPersonFee, registrationFeeLabel, registrationId, teamRules, teamSize
 import DownloadIcon from '../../shared/DownloadIcon.jsx';
 import GameArtwork from '../../shared/GameArtwork.jsx';
 import { AmbientField } from '../../shared/motion.jsx';
+import { rulebookUpdateNotice } from '../../../../shared/rulebook-status.mjs';
+import RulebookLink from '../../shared/RulebookLink.jsx';
 import './tournament-guide.css';
 
 const asset = (path) => import.meta.env.BASE_URL + path;
@@ -286,7 +288,8 @@ function GamePanel({ game, settings, publishedTeams, active, onNavigate }) {
         </dl>
         <div className="game-details-links">
           <a className="guide-link" href="#rules" onClick={(e) => { e.preventDefault(); onNavigate('rules'); }}>Read the rules <span aria-hidden="true">↗</span></a>
-          {settings?.rulebookUrl ? <a className="guide-link" href={settings.rulebookUrl} download>Download rulebook (PDF)</a> :
+          {settings?.rulebookUrl || rulebookUpdateNotice('trinity-showdown', game.id)
+            ? <RulebookLink gameId={game.id} className="guide-link" href={settings?.rulebookUrl}>Download rulebook (PDF)</RulebookLink> :
             <a className="guide-link" href="#rulebooks" onClick={(e) => { e.preventDefault(); onNavigate('rulebooks'); }}>Game rulebooks <span aria-hidden="true">↗</span></a>}
           <a className="guide-link" href={'#' + registrationId(game.id)} onClick={(e) => { e.preventDefault(); onNavigate(registrationId(game.id)); }}>Register now <span aria-hidden="true">↗</span></a>
         </div>
@@ -414,16 +417,16 @@ function Rulebooks({ gameSettings }) {
     <ul className="rulebooks" role="list">
       {games.map((game) => {
         const url = gameSettings?.[game.id]?.rulebookUrl ?? game.rulebookUrl;
-        const Card = url ? 'a' : 'div';
+        const notice = rulebookUpdateNotice('trinity-showdown', game.id);
         return <li key={game.id}>
-          <Card className="rulebook-card" href={url} download={url ? true : undefined}>
+          <RulebookLink gameId={game.id} className="rulebook-card" href={url}>
             <span className="rulebook-art"><GameArtwork game={game} /></span>
             <span className="rulebook-copy">
               <span className="rulebook-name">{game.name}</span>
-              <span className="rulebook-status">{url ? 'Download PDF' : 'PDF coming soon'}</span>
+              <span className="rulebook-status">{notice ? 'Rulebook being updated' : url ? 'Download PDF' : 'PDF coming soon'}</span>
             </span>
             <span className="rulebook-icon"><DownloadIcon /></span>
-          </Card>
+          </RulebookLink>
         </li>;
       })}
     </ul>

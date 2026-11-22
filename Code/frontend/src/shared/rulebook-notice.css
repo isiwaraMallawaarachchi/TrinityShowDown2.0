@@ -1,0 +1,42 @@
+.rulebook-notice {
+  width: min(420px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: clamp(24px, 5vw, 36px);
+  border: 1px solid var(--control-line);
+  border-radius: 18px;
+  background: var(--editorial-glass);
+  color: var(--ink);
+  box-shadow: 0 24px 80px var(--ui-shadow);
+  text-align: center;
+}
+.rulebook-notice::backdrop { background: color-mix(in srgb, var(--scene-base) 84%, transparent); backdrop-filter: blur(6px); }
+.rulebook-notice-symbol {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 18px;
+  border: 1px solid var(--control-line);
+  border-radius: 50%;
+  background: var(--surface-tint);
+  color: var(--accent);
+  font-size: 24px;
+  font-weight: 800;
+}
+.rulebook-notice .eyebrow { margin: 0 0 8px; color: var(--accent); }
+.rulebook-notice[open] h2 { margin: 0 0 12px; font: 400 clamp(28px, 5vw, 36px)/1.15 var(--display); }
+.rulebook-notice h2 + p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
+.rulebook-notice-dismiss {
+  min-height: 44px;
+  margin-top: 24px;
+  padding: 10px 28px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 13px;
+  font-weight: 800;
+}
+.rulebook-notice-dismiss:hover { background: var(--accent-hover); }
+html:has(.rulebook-notice[open]), body:has(.rulebook-notice[open]) { overflow: hidden; }

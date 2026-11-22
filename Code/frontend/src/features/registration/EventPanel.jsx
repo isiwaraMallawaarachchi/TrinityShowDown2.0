@@ -6,6 +6,8 @@ import { AmbientField } from '../../shared/motion.jsx';
 import { submitRegistration } from '../../shared/api.js';
 import { formatEventTime } from '../../shared/countdown.js';
 import { prepareRegistrationImages } from './upload-images.js';
+import { rulebookUpdateNotice } from '../../../../shared/rulebook-status.mjs';
+import RulebookLink from '../../shared/RulebookLink.jsx';
 import './event-panel.css';
 
 const imageTypes = ['image/jpeg', 'image/png', 'image/webp'];
@@ -121,6 +123,7 @@ function RegistrationForm({ game, settings, institutions }) {
   const pendingFocus = useRef(null);
   const idLabel = rules.playerIdLabel ?? 'In-game ID';
   const needsTownHallLevel = requiresTownHallLevel(game.id);
+  const rulebookNotice = rulebookUpdateNotice('trinity-showdown', game.id);
 
   useEffect(() => () => uploadController.current?.abort(), []);
 
@@ -205,18 +208,18 @@ function RegistrationForm({ game, settings, institutions }) {
     </div>
     <h3 className="entry-step-title" ref={stepHeading} tabIndex={-1}>{steps[step]}</h3>
     <div data-step="0" id="entry-panel-0" role="tabpanel" aria-labelledby="entry-tab-0" hidden={step !== 0} className="entry-step">
-      {settings?.rulebookUrl && <div className="entry-requirements">
-        <a className="entry-rulebook" href={settings.rulebookUrl} download>
+      {(settings?.rulebookUrl || rulebookNotice) && <div className="entry-requirements">
+        <RulebookLink gameId={game.id} className="entry-rulebook" href={settings?.rulebookUrl}>
           <span className="entry-rulebook-copy">
-            <strong>Download the game rulebook</strong>
-            <small>PDF{settings.rulebookVersion && ` · Version ${settings.rulebookVersion}`}</small>
+            <strong>{rulebookNotice ? 'COD Mobile rulebook' : 'Download the game rulebook'}</strong>
+            <small>{rulebookNotice ? 'Rulebook being updated' : `PDF${settings?.rulebookVersion ? ' · Version ' + settings.rulebookVersion : ''}`}</small>
           </span>
           <span className="entry-rulebook-icon"><DownloadIcon /></span>
-        </a>
-        {(settings.privacyUrl || settings.closesAt || settings.formId) && <div className="entry-requirements-meta">
-          {settings.privacyUrl && <a href={settings.privacyUrl} target="_blank" rel="noopener">Read the privacy notice</a>}
-          {settings.closesAt && <p><strong>Deadline</strong> {formatEventTime(settings.closesAt)}</p>}
-          {settings.formId && <p>The team name, logo and game will be public if the organizers approve the entry.</p>}
+        </RulebookLink>
+        {(settings?.privacyUrl || settings?.closesAt || settings?.formId) && <div className="entry-requirements-meta">
+          {settings?.privacyUrl && <a href={settings.privacyUrl} target="_blank" rel="noopener">Read the privacy notice</a>}
+          {settings?.closesAt && <p><strong>Deadline</strong> {formatEventTime(settings.closesAt)}</p>}
+          {settings?.formId && <p>The team name, logo and game will be public if the organizers approve the entry.</p>}
         </div>}
       </div>}
       <PaymentDetails gameId={game.id} settings={settings} rules={rules} />

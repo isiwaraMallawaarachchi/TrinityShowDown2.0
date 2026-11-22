@@ -4,6 +4,7 @@ import { rateLimit } from 'express-rate-limit';
 import multer from 'multer';
 import sharp from 'sharp';
 import { parseTownHallLevel, requiresTownHallLevel } from '../../shared/registration-rules.mjs';
+import { rulebookUpdateNotice } from '../../shared/rulebook-status.mjs';
 import { transaction } from './database.js';
 import { email, HttpError, isUuid, sendMedia, text } from './http.js';
 import { bundledRulebook, bundledRulebookSettings } from './rulebooks.js';
@@ -165,6 +166,7 @@ export function publicRoutes(db, config) {
     ]);
     const games = bundledRulebookSettings(config.edition);
     for (const form of forms.rows) {
+      const rulebookNotice = rulebookUpdateNotice(config.edition, form.slug);
       const hasRulebook = form.has_rulebook || formRulebook(config.edition, form);
       const rulebook = form.form_id ? {
         rulebookUrl: hasRulebook ? `/api/public/rulebooks/${form.form_id}` : null,
@@ -176,7 +178,8 @@ export function publicRoutes(db, config) {
         opensAt: form.registration_opens_at, closesAt: form.registration_closes_at,
         formId: form.form_id, starters: supported(form) ? form.max_starters : null, substitutes: supported(form) ? form.max_substitutes : null,
         fee: form.fee_lkr, bankInstructions: form.bank_instructions,
-        rulebookUrl: rulebook?.rulebookUrl ?? null, rulebookVersion: rulebook?.rulebookVersion ?? null,
+        rulebookUrl: rulebookNotice ? null : rulebook?.rulebookUrl ?? null,
+        rulebookVersion: rulebook?.rulebookVersion ?? null, rulebookNotice,
         privacyVersion: form.privacy_version,
         privacyUrl: form.form_id ? `/api/public/privacy/${form.form_id}` : null,
       });
@@ -192,6 +195,8 @@ export function publicRoutes(db, config) {
   router.get('/rulebooks/files/:game/:version', (req, res, next) => {
     const file = bundledRulebook(config.edition, req.params.game, req.params.version);
     if (!file) throw new HttpError(404, 'Rulebook unavailable.');
+    const notice = rulebookUpdateNotice(config.edition, req.params.game);
+    if (notice) throw new HttpError(503, notice);
     downloadRulebook(res, next, file);
   });
 
@@ -204,6 +209,8 @@ export function publicRoutes(db, config) {
       LEFT JOIN trinity.media m ON m.key = f.rulebook_key AND m.registration_id IS NULL
       WHERE f.id = $1 AND e.slug = $2`, [req.params.id, config.edition]);
     if (!form) throw new HttpError(404, 'Rulebook unavailable.');
+    const notice = rulebookUpdateNotice(config.edition, form.slug);
+    if (notice) throw new HttpError(503, notice);
     const file = formRulebook(config.edition, form);
     if (file) return downloadRulebook(res, next, file);
     if (form.bytes) res.attachment(`${form.slug}-rulebook.pdf`);
