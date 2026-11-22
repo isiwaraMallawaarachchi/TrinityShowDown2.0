@@ -54,16 +54,8 @@ test('bundled rulebooks can be downloaded before registration is configured', as
   assert.deepEqual(Object.keys(games).sort(), ['clash-of-clans', 'cod-mobile', 'mlbb', 'pubg-mobile']);
   for (const [game, settings] of Object.entries(games)) {
     assert.equal(settings.open, false);
-    const expectedVersion = game === 'mlbb' ? '2' : '1';
+    const expectedVersion = game === 'mlbb' || game === 'cod-mobile' ? '2' : '1';
     assert.equal(settings.rulebookVersion, expectedVersion);
-    if (game === 'cod-mobile') {
-      assert.equal(settings.rulebookUrl, null);
-      assert.match(settings.rulebookNotice, /COD Mobile rulebook is getting an update/);
-      const paused = await fetch(origin + '/api/public/rulebooks/files/cod-mobile/1');
-      assert.equal(paused.status, 503);
-      assert.equal((await paused.json()).error, settings.rulebookNotice);
-      continue;
-    }
     assert.equal(settings.rulebookNotice, null);
     const pdf = await fetch(origin + settings.rulebookUrl, { headers: { Range: 'bytes=0-4' } });
     assert.equal(pdf.status, 206);
@@ -71,7 +63,7 @@ test('bundled rulebooks can be downloaded before registration is configured', as
     assert.equal(pdf.headers.get('content-disposition').replaceAll('"', ''), `attachment; filename=${game}-v${expectedVersion}.pdf`);
     assert.equal(await pdf.text(), '%PDF-');
   }
-  const unavailable = await fetch(origin + '/api/public/rulebooks/files/cod-mobile/2');
+  const unavailable = await fetch(origin + '/api/public/rulebooks/files/cod-mobile/3');
   assert.equal(unavailable.status, 404);
   await unavailable.arrayBuffer();
 });
@@ -97,14 +89,15 @@ test('captain and organizer APIs share durable, private submissions and publish 
   `);
   const cocPdf = bundledRulebook('trinity-showdown', 'clash-of-clans', '1');
   const mlbbPdf = bundledRulebook('trinity-showdown', 'mlbb', '1');
+  const codPdf = bundledRulebook('trinity-showdown', 'cod-mobile', '1');
   await db.query(`
     INSERT INTO trinity.registration_forms(edition_game_id, version, privacy_notice_id, rulebook_version, rulebook_key,
       fee_lkr, bank_instructions, min_starters, max_starters, min_substitutes, max_substitutes)
-      SELECT eg.id, 1, n.id, CASE WHEN g.slug IN ('clash-of-clans', 'mlbb') THEN '1' ELSE 'test' END,
-        CASE g.slug WHEN 'clash-of-clans' THEN $1 WHEN 'mlbb' THEN $2 ELSE 'rules/test' END,
+      SELECT eg.id, 1, n.id, CASE WHEN g.slug IN ('clash-of-clans', 'mlbb', 'cod-mobile') THEN '1' ELSE 'test' END,
+        CASE g.slug WHEN 'clash-of-clans' THEN $1 WHEN 'mlbb' THEN $2 WHEN 'cod-mobile' THEN $3 ELSE 'rules/test' END,
         100, 'Synthetic bank instructions', 5, 5, 0, 2
       FROM trinity.edition_games eg JOIN trinity.games g ON eg.game_id = g.id CROSS JOIN trinity.privacy_notices n;
-  `, [cocPdf.key, mlbbPdf.key]);
+  `, [cocPdf.key, mlbbPdf.key, codPdf.key]);
   await db.exec(`
     UPDATE trinity.edition_games eg SET active_form_id = f.id FROM trinity.registration_forms f
       WHERE f.edition_game_id = eg.id;
@@ -156,10 +149,7 @@ test('captain and organizer APIs share durable, private submissions and publish 
     startsAt: '2026-12-19T03:30:00.000Z', endsAt: '2026-12-19T12:30:00.000Z', venue: 'Test venue',
   });
   assert.equal(event.games['cod-mobile'].open, true);
-  assert.equal(event.games['cod-mobile'].rulebookUrl, null);
-  const pausedRulebook = await fetch(origin + '/api/public/rulebooks/' + event.games['cod-mobile'].formId);
-  assert.equal(pausedRulebook.status, 503);
-  assert.equal((await pausedRulebook.json()).error, event.games['cod-mobile'].rulebookNotice);
+  assert.equal(event.games['cod-mobile'].rulebookNotice, null);
   const cocRulebook = event.games['clash-of-clans'];
   assert.equal(cocRulebook.open, true);
   assert.equal(cocRulebook.rulebookUrl, `/api/public/rulebooks/${cocRulebook.formId}`);
@@ -236,6 +226,46 @@ test('captain and organizer APIs share durable, private submissions and publish 
   assert.equal((await request(`organizer/registrations/${reference}/images/proof`)).status, 401);
   assert.equal((await db.query('SELECT count(*)::int AS count FROM trinity.receipt_outbox')).rows[0].count, 1);
   assert.equal((await db.query('SELECT count(*)::int AS count FROM trinity.media WHERE registration_id = $1', [reference])).rows[0].count, 18);
+
+  await t.test('COD Mobile version 2 downloads the supplied PDF while existing entries keep their accepted form', async () => {
+    const before = await (await request('public/event')).json();
+    const publish = await readFile(new URL('../../database/publish_codm_rulebook_v2.sql', import.meta.url), 'utf8');
+    await db.exec('RESET ROLE');
+    await db.exec(publish);
+    await db.exec(publish);
+    await db.exec('SET ROLE trinity_test_api');
+
+    const after = await (await request('public/event')).json();
+    const { 'cod-mobile': oldForm, ...otherGames } = before.games;
+    const { 'cod-mobile': newForm, ...otherGamesAfter } = after.games;
+    assert.deepEqual(otherGamesAfter, otherGames);
+    assert.equal(newForm.rulebookVersion, '2');
+    assert.equal(newForm.rulebookNotice, null);
+    assert.notEqual(newForm.formId, oldForm.formId);
+    assert.deepEqual({
+      ...newForm, formId: oldForm.formId, rulebookVersion: '1',
+      rulebookUrl: oldForm.rulebookUrl, privacyUrl: oldForm.privacyUrl,
+    }, oldForm);
+
+    const pdf = await fetch(origin + newForm.rulebookUrl);
+    assert.equal(pdf.status, 200);
+    assert.equal(pdf.headers.get('content-type'), 'application/pdf');
+    assert.equal(pdf.headers.get('content-disposition').replaceAll('"', ''), 'attachment; filename=cod-mobile-v2.pdf');
+    const expected = await readFile(bundledRulebook('trinity-showdown', 'cod-mobile', '2').path);
+    assert.deepEqual(Buffer.from(await pdf.arrayBuffer()), expected);
+
+    const previousPdf = await fetch(origin + oldForm.rulebookUrl, { headers: { Range: 'bytes=0-4' } });
+    assert.equal(previousPdf.status, 206);
+    assert.equal(previousPdf.headers.get('content-disposition').replaceAll('"', ''), 'attachment; filename=cod-mobile-v1.pdf');
+    assert.equal(await previousPdf.text(), '%PDF-');
+    const { rows: [saved] } = await db.query('SELECT form_id FROM trinity.registrations WHERE id = $1', [reference]);
+    assert.equal(saved.form_id, oldForm.formId);
+    const { rows } = await db.query(`
+      SELECT version FROM trinity.registration_forms
+      WHERE edition_game_id = (SELECT edition_game_id FROM trinity.registration_forms WHERE id = $1)
+      ORDER BY version`, [newForm.formId]);
+    assert.deepEqual(rows.map(({ version }) => version), [1, 2]);
+  });
 
   const login = await request('organizer/login', { json: { email: 'organizer@example.com', password: 'synthetic-password-1' } });
   assert.equal(login.status, 200, await login.clone().text());
