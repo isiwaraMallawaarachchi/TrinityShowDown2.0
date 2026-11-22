@@ -3,7 +3,7 @@ import { rulebookUpdateNotice } from '../../shared/rulebook-status.mjs';
 
 const catalogue = new Map([
   ['trinity-showdown', new Map([
-    ['cod-mobile', ['1']],
+    ['cod-mobile', ['1', '2']],
     ['pubg-mobile', ['1']],
     ['mlbb', ['1', '2']],
     ['clash-of-clans', ['1']],
