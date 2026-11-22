@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { rulebookUpdateNotice } from '../../shared/rulebook-status.mjs';
 
 const catalogue = new Map([
   ['trinity-showdown', new Map([
@@ -23,6 +24,8 @@ export function bundledRulebookSettings(edition) {
   const games = catalogue.get(edition) ?? [];
   return new Map(Array.from(games, ([game, versions]) => {
     const version = versions.at(-1);
-    return [game, { open: false, rulebookVersion: version, rulebookUrl: `/api/public/rulebooks/files/${game}/${version}` }];
+    const notice = rulebookUpdateNotice(edition, game);
+    return [game, { open: false, rulebookVersion: version, rulebookNotice: notice,
+      rulebookUrl: notice ? null : `/api/public/rulebooks/files/${game}/${version}` }];
   }));
 }
